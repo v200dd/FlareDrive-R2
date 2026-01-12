@@ -1,5 +1,22 @@
 <template>
-  <div class="main" 
+  <div v-if="!isAuthenticated" class="login-overlay" :style="{ backgroundImage: `url('${backgroundImageUrl}')` }">
+    <div class="login-box">
+      <img src="/assets/homescreen.png" alt="Logo" style="height: 48px; margin-bottom: 20px;" />
+      <h2 style="margin-bottom: 20px; color: #333;">请输入访问密码</h2>
+      <input 
+        type="password" 
+        v-model="passwordInput" 
+        @keyup.enter="submitPassword"
+        placeholder="输入密码"
+        style="padding: 10px; width: 80%; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px;"
+      />
+      <button @click="submitPassword" class="login-btn">
+        进入网盘
+      </button>
+    </div>
+  </div>
+
+  <div class="main" v-else
       @dragenter.prevent 
       @dragover.prevent 
       @drop.prevent="onDrop"
@@ -62,8 +79,8 @@
         <li v-for="folder in filteredFolders" :key="folder">
           <div tabindex="0" class="file-item" @click="cwd = folder" @contextmenu.prevent="
             showContextMenu = true;
-          focusedItem = folder;
-          ">
+            focusedItem = folder;
+            ">
             <div class="file-icon">
               <svg  viewBox="0 0 576 512"
                 xmlns="http://www.w3.org/2000/svg" width="36" height="36">
@@ -74,8 +91,8 @@
             </div>
             <div style="margin-right: 10px;margin-left: auto;" @click.stop="
               showContextMenu = true;
-            focusedItem = folder;
-            ">
+              focusedItem = folder;
+              ">
               <svg t="1741761103305" class="icon" viewBox="0 0 1024 1024" version="1.1"
                 xmlns="http://www.w3.org/2000/svg" p-id="6484" width="30" height="30">
                 <path
@@ -88,7 +105,7 @@
         <li v-for="file in filteredFiles" :key="file.key">
           <div @click="preview(`/raw/${file.key}`)" @contextmenu.prevent="
             showContextMenu = true;
-          focusedItem = file;" class="file-item" style="position: relative;">
+            focusedItem = file;" class="file-item" style="position: relative;">
             <MimeIcon :content-type="file.httpMetadata.contentType" :thumbnail="file.customMetadata.thumbnail
               ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png`
               : null
@@ -102,8 +119,8 @@
             </div>
             <div style="margin-right: 10px;margin-left: auto;" @click.stop="
               showContextMenu = true;
-            focusedItem = file;
-            ">
+              focusedItem = file;
+              ">
               <svg t="1741761103305" class="icon" viewBox="0 0 1024 1024" version="1.1"
                 xmlns="http://www.w3.org/2000/svg" p-id="6484" width="30" height="30">
                 <path
@@ -197,6 +214,8 @@ import Footer from "./Footer.vue";
 
 export default {
   data: () => ({
+    isAuthenticated: false, // 3. 新增：认证状态
+    passwordInput: "",      // 4. 新增：密码输入框内容
     cwd: new URL(window.location).searchParams.get("p") || "",
     files: [],
     folders: [],
@@ -234,6 +253,18 @@ export default {
   },
 
   methods: {
+    // 5. 新增：提交密码验证方法
+    submitPassword() {
+      if (this.passwordInput === "hejianwei") {
+        this.isAuthenticated = true;
+        localStorage.setItem("flaredrive_auth", "hejianwei"); // 记住登录状态
+        this.fetchFiles(); // 登录成功后加载文件
+      } else {
+        alert("密码错误！");
+        this.passwordInput = "";
+      }
+    },
+
     copyLink(link) {
       const url = new URL(link, window.location.origin);
       navigator.clipboard.writeText(url.toString());
@@ -265,6 +296,9 @@ export default {
     },
 
     fetchFiles() {
+      // 6. 修改：未登录时不获取文件
+      if (!this.isAuthenticated) return;
+
       this.files = [];
       this.folders = [];
       this.loading = true;
@@ -597,13 +631,18 @@ export default {
         }
         document.title = this.cwd.replace(/.*\/(?!$)|\//g, "") === "/" 
             ? "FlareDrive-R2 - 优雅的 Cloudflare R2 网盘文件库"
-            :`${this.cwd.replace(/.*\/(?!$)|\//g, "") || "/" } - 优雅的 Cloudflare R2 网盘文件库`;
+            : `${this.cwd.replace(/.*\/(?!$)|\//g, "") || "/" } - 优雅的 Cloudflare R2 网盘文件库`;
       },
       immediate: true,
     },
   },
 
   created() {
+    // 7. 新增：检查是否已经登录过
+    if (localStorage.getItem("flaredrive_auth") === "hejianwei") {
+      this.isAuthenticated = true;
+    }
+
     window.addEventListener("popstate", (ev) => {
       const searchParams = new URL(window.location).searchParams;
       if (searchParams.get("p") !== this.cwd)
@@ -622,6 +661,44 @@ export default {
 </script>
 
 <style>
+/* 8. 新增：登录界面样式 */
+.login-overlay {
+  display: flex;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  background-size: cover;
+  background-position: center;
+}
+
+.login-box {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 300px;
+  backdrop-filter: blur(10px);
+}
+
+.login-btn {
+  background: #007aff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%;
+}
+
+.login-btn:hover {
+  background: #0056b3;
+}
+
+/* 原有样式保持不变 */
 .main {
   display: flex;
   height: 100%;
