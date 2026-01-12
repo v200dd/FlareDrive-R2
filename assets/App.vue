@@ -19,13 +19,14 @@
     </div>
 
     <div class="main" v-else
-        @dragenter.prevent 
-        @dragover.prevent 
-        @drop.prevent="onDrop"
-        :style="{ backgroundImage: `url('${backgroundImageUrl}')` }"
+      @dragenter.prevent 
+      @dragover.prevent 
+      @drop.prevent="onDrop"
+      :style="{ backgroundImage: `url('${backgroundImageUrl}')` }"
     >
       <progress v-if="uploadProgress !== null" :value="uploadProgress" max="100"></progress>
       <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder"></UploadPopup>
+      
       <button class="upload-button circle" @click="showUploadPopup = true">
         <svg t="1741764069699" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
           p-id="24280" width="24" height="24">
@@ -34,13 +35,15 @@
             fill="#e6e6e6" p-id="24281"></path>
         </svg>
       </button>
+
       <div class="app-bar">
         <a class="app-title-container" style="display: flex; align-items: center;" href="/">
           <img src="/assets/homescreen.png" alt="FlareDrive" style="height: 24px" />
           <h1 class="app-title" style="font-size: 20px;margin: 0 25px 0 8px; user-select: none;">FlareDrive</h1>
         </a>
 
-        <input type="search" v-model="search" aria-label="Search" placeholder="🍿 输入以全局搜索文件" />
+        <input type="search" v-model="search" aria-label="Search" placeholder="🍿 输入以全局搜索文件" style="flex: 1; margin: 0 10px;" />
+        
         <div class="menu-button">
           <button class="circle" @click="showMenu = true" style="display: flex; align-items: center;background-color: rgb(245, 245, 245);">
             <p style="
@@ -126,7 +129,7 @@
                 <svg t="1741761103305" class="icon" viewBox="0 0 1024 1024" version="1.1"
                   xmlns="http://www.w3.org/2000/svg" p-id="6484" width="30" height="30">
                   <path
-                    d="M341.333333 533.333333a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333334z m-469.333334 64H192a64 64 0 0 0-63.893333 60.245334L128 661.333333v149.333334a64 64 0 0 0 60.245333 63.893333L192 874.666667h149.333333a64 64 0 0 0 63.893334-60.245334L405.333333 810.666667v-149.333334a64 64 0 0 0-60.245333-63.893333L341.333333 597.333333z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245334L597.333333 661.333333v149.333334a64 64 0 0 0 60.245334 63.893333L661.333333 874.666667h149.333334a64 64 0 0 0 63.893333-60.245334L874.666667 810.666667v-149.333334a64 64 0 0 0-60.245334-63.893333L810.666667 597.333333zM341.333333 64a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333334zM341.333333 128H192a64 64 0 0 0-63.893333 60.245333L128 192v149.333333a64 64 0 0 0 60.245333 63.893334L192 405.333333h149.333333a64 64 0 0 0 63.893334-60.245333L405.333333 341.333333V192a64 64 0 0 0-60.245333-63.893333L341.333333 128z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245333L597.333333 192v149.333333a64 64 0 0 0 60.245334 63.893334L661.333333 405.333333h149.333334a64 64 0 0 0 63.893334-60.245333L874.666667 341.333333V192a64 64 0 0 0-60.245334-63.893333L810.666667 128z"
+                    d="M341.333333 533.333333a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333334z m-469.333334 64H192a64 64 0 0 0-63.893333 60.245334L128 661.333333v149.333334a64 64 0 0 0 60.245333 63.893333L192 874.666667h149.333333a64 64 0 0 0 63.893334-60.245334L405.333333 810.666667v-149.333334a64 64 0 0 0-60.245333-63.893333L341.333333 597.333333z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245334L597.333333 661.333333v149.333334a64 64 0 0 0 60.245334 63.893333L661.333333 874.666667h149.333334a64 64 0 0 0 63.893333-60.245334L874.666667 810.666667v-149.333334a64 64 0 0 0-60.245334-63.893333L810.666667 597.333333zM341.333333 64a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333334zM341.333333 128H192a64 64 0 0 0-63.893333 60.245333L128 192v149.333333a64 64 0 0 0 60.245333 63.893334L192 405.333333h149.333333a64 64 0 0 0 63.893334-60.245333L405.333333 341.333333V192a64 64 0 0 0-60.245333-63.893333L341.333333 128z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245333L597.333333 192v149.333333a64 64 0 0 0 60.245334 63.893334L661.333333 405.333333h149.333334a64 64 0 0 0 63.893333-60.245333L874.666667 341.333333V192a64 64 0 0 0-60.245334-63.893333L810.666667 128z"
                     fill="#2c2c2c" p-id="6485"></path>
                 </svg>
               </div>
@@ -217,8 +220,8 @@ import Footer from "./Footer.vue";
 
 export default {
   data: () => ({
-    isAuthenticated: false, // 【新增】认证状态
-    passwordInput: "",      // 【新增】密码输入框
+    isAuthenticated: false, // 认证状态
+    passwordInput: "",      // 密码输入框
     cwd: new URL(window.location).searchParams.get("p") || "",
     files: [],
     folders: [],
@@ -256,12 +259,11 @@ export default {
   },
 
   methods: {
-    // 【新增】提交密码逻辑
     submitPassword() {
       if (this.passwordInput === "hejianwei") {
         this.isAuthenticated = true;
-        localStorage.setItem("flaredrive_auth", "hejianwei"); // 存入本地缓存
-        this.fetchFiles(); // 验证通过后立即加载数据
+        localStorage.setItem("flaredrive_auth", "hejianwei"); // 记住登录状态
+        this.fetchFiles(); // 登录成功后立即加载文件
       } else {
         alert("密码错误！");
         this.passwordInput = "";
@@ -299,7 +301,7 @@ export default {
     },
 
     fetchFiles() {
-      // 【新增】如果未登录，阻止请求文件
+      // 只有认证通过才加载文件
       if (!this.isAuthenticated) return;
 
       this.files = [];
@@ -641,10 +643,9 @@ export default {
   },
 
   created() {
-    // 【修改点3】页面创建时，先检查本地缓存
+    // 检查缓存的认证状态
     if (localStorage.getItem("flaredrive_auth") === "hejianwei") {
       this.isAuthenticated = true;
-      // 注意：这里需要再次调用 fetchFiles，虽然 watch 会调用，但有时时序问题可能导致第一次被拦截
       this.fetchFiles();
     }
 
@@ -666,7 +667,7 @@ export default {
 </script>
 
 <style>
-/* 【新增】登录界面样式 */
+/* 登录界面样式 */
 .login-overlay {
   display: flex;
   height: 100vh;
@@ -674,18 +675,19 @@ export default {
   align-items: center;
   background-size: cover;
   background-position: center;
-  z-index: 9999;
-  position: absolute;
+  /* 确保遮罩层覆盖一切 */
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
+  z-index: 9999;
 }
 
 .login-box {
   background: rgba(255, 255, 255, 0.9);
   padding: 40px;
   border-radius: 12px;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -694,7 +696,7 @@ export default {
 }
 
 .login-btn {
-  background: #2c2c2c;
+  background: #007aff;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -702,90 +704,108 @@ export default {
   cursor: pointer;
   font-size: 16px;
   width: 100%;
-  transition: background 0.2s;
 }
 
 .login-btn:hover {
-  background: #000;
+  background: #0056b3;
 }
 
-/* 原有样式保持不变 */
+/* 修复后的样式 */
 .main {
-  display: flex;
-  height: 100%;
-  /* background-image: url(/assets/bg-light.webp); */
-  background-size: cover;
-  background-position: center;
-  overflow-y: auto;
-  flex-direction: column;
+  display: flex;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  overflow-y: auto;
+  flex-direction: column;
 }
 
 .app-bar {
-  z-index: 2;
-  position: sticky;
-  top: 0;
-  padding: 8px;
-  background-color: white;
-  display: flex;
+  z-index: 2;
+  position: sticky;
+  top: 0;
+  padding: 8px;
+  background-color: white;
+  display: flex;
+  align-items: center; /* 确保垂直居中 */
 }
 
 @media (max-width: 400px) {
-  .menu-button {
-    margin: 0;
-    padding: 0;
-  }
+  .menu-button {
+    margin: 0;
+    padding: 0;
+  }
 
-  button.circle {
-    padding: 0 8px;
-  }
-  .menu-button-text {
-    display: none !important;
-  }
+  button.circle {
+    padding: 0 8px;
+  }
+  .menu-button-text {
+    display: none !important;
+  }
 }
 
 @media (max-width: 340px) {
-  .app-title-container {
-    display: none !important;
-  }
+  .app-title-container {
+    display: none !important;
+  }
 }
 
 .menu-button {
-  display: flex;
-  position: relative;
-  margin-left: 10px;
-  padding: 0 10px;
+  display: flex;
+  position: relative;
+  margin-left: 10px;
+  padding: 0 10px;
 }
 
+/* 修复点2：将宽度从 60% 改为 95% 并设置最大宽度，防止大屏过宽，小屏过窄 */
 .file-list-container {
-  margin: 20px auto;
-  padding: 10px;
-  width: 60%;
-  max-width: 95%;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: width 0.3s ease;
+  margin: 20px auto;
+  padding: 10px;
+  width: 95%; /* 修复“半屏”问题 */
+  max-width: 1200px; /* 限制最大宽度 */
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: width 0.3s ease;
 }
 
 @media (max-width: 1280px) {
-  .file-list-container {
-    width: 768px;
-    padding: 10px;
-  }
+  .file-list-container {
+    width: 95%; /* 确保在中小屏幕上占满 */
+    padding: 10px;
+  }
 }
 
 .menu-button>button {
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .menu-button>button:hover {
-  background-color: rgb(212, 212, 212);
+  background-color: rgb(212, 212, 212);
 }
 
 .menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: absolute;
+  top: 100%;
+  right: 0;
+}
+
+/* 上传按钮样式补充 */
+.upload-button {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: white; /* 修复按钮背景 */
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
 }
 </style>
