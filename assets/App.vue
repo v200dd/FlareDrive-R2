@@ -1,205 +1,204 @@
 <template>
-  <div class="main" @dragenter.prevent @dragover.prevent @drop.prevent="onDrop">
-    <progress
-      v-if="uploadProgress !== null"
-      :value="uploadProgress"
-      max="100"
-    ></progress>
-    <UploadPopup
-      v-model="showUploadPopup"
-      @upload="onUploadClicked"
-      @createFolder="createFolder"
-    ></UploadPopup>
-    <button class="upload-button circle" @click="showUploadPopup = true">
-      <img
-        style="filter: invert(100%)"
-        src="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/4.0.0/png/file/upload_file/materialicons/36dp/2x/baseline_upload_file_black_36dp.png"
-        alt="Upload"
-        width="36"
-        height="36"
-        @contextmenu.prevent
-      />
-    </button>
-    <div class="app-bar">
-      <input type="search" v-model="search" aria-label="Search" />
-      <div class="menu-button">
-        <button class="circle" @click="showMenu = true">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 448 512"
-            width="24"
-            height="24"
-            title="Menu"
-            style="display: block; margin: 4px"
-          >
-            <!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. -->
-            <path
-              d="M120 256c0 30.9-25.1 56-56 56s-56-25.1-56-56s25.1-56 56-56s56 25.1 56 56zm160 0c0 30.9-25.1 56-56 56s-56-25.1-56-56s25.1-56 56-56s56 25.1 56 56zm104 56c-30.9 0-56-25.1-56-56s25.1-56 56-56s56 25.1 56 56s-25.1 56-56 56z"
-            />
-          </svg>
-        </button>
-        <Menu
-          v-model="showMenu"
-          :items="[{ text: '名称A-Z' }, { text: '大小↑' } ,{ text: '大小↓' }, { text: '粘贴' }]"
-          @click="onMenuClick"
+  <div style="height: 100%; width: 100%;">
+
+    <div v-if="!isAuthenticated" class="login-overlay" :style="{ backgroundImage: `url('${backgroundImageUrl}')` }">
+      <div class="login-box">
+        <img src="/assets/homescreen.png" alt="Logo" style="height: 48px; margin-bottom: 20px;" />
+        <h2 style="margin-bottom: 20px; color: #333; font-weight: normal;">请输入访问密码</h2>
+        <input 
+          type="password" 
+          v-model="passwordInput" 
+          @keyup.enter="submitPassword"
+          placeholder="输入密码"
+          style="padding: 10px; width: 80%; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; outline: none;"
         />
+        <button @click="submitPassword" class="login-btn">
+          进入网盘
+        </button>
       </div>
     </div>
-    <ul class="file-list">
-      <li v-if="cwd !== ''">
-        <div
-          tabindex="0"
-          class="file-item"
-          @click="cwd = cwd.replace(/[^\/]+\/$/, '')"
-          @contextmenu.prevent
-        >
-          <div class="file-icon">
-            <img
-              src="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/4.0.0/png/file/folder/materialicons/36dp/2x/baseline_folder_black_36dp.png"
-              width="36"
-              height="36"
-              alt="Folder"
-            />
-          </div>
-          <span class="file-name">..</span>
+
+    <div class="main" v-else
+        @dragenter.prevent 
+        @dragover.prevent 
+        @drop.prevent="onDrop"
+        :style="{ backgroundImage: `url('${backgroundImageUrl}')` }"
+    >
+      <progress v-if="uploadProgress !== null" :value="uploadProgress" max="100"></progress>
+      <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder"></UploadPopup>
+      <button class="upload-button circle" @click="showUploadPopup = true">
+        <svg t="1741764069699" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
+          p-id="24280" width="24" height="24">
+          <path
+            d="M576 557.7088V934.4H448V560.4416l-43.8912 43.8848L313.6 513.8176l199.1232-199.1168 0.64 0.64 0.64-0.64 199.1232 199.1168-90.5088 90.5088L576 557.7088zM704 678.4h32c88.3648 0 160-71.6352 160-160s-71.6352-160-160-160c-20.5184 0-40.128 3.8592-58.1568 10.8992C670.336 270.1248 587.4944 192 486.4 192c-106.0416 0-192 85.9584-192 192 0 15.9104 1.9328 31.3728 5.5872 46.1568A127.7504 127.7504 0 0 0 256 422.4c-70.6944 0-128 57.3056-128 128s57.3056 128 128 128h64v128H256c-141.3824 0-256-114.6176-256-256 0-113.3184 73.632-209.4464 175.6608-243.136C210.0352 167.584 336.1216 64 486.4 64c121.312 0 227.552 67.712 281.7728 168.1792C912.0896 248.1792 1024 370.2208 1024 518.4c0 159.0592-128.9408 288-288 288h-32v-128z"
+            fill="#e6e6e6" p-id="24281"></path>
+        </svg>
+      </button>
+      <div class="app-bar">
+        <a class="app-title-container" style="display: flex; align-items: center;" href="/">
+          <img src="/assets/homescreen.png" alt="FlareDrive" style="height: 24px" />
+          <h1 class="app-title" style="font-size: 20px;margin: 0 25px 0 8px; user-select: none;">FlareDrive</h1>
+        </a>
+
+        <input type="search" v-model="search" aria-label="Search" placeholder="🍿 输入以全局搜索文件" />
+        <div class="menu-button">
+          <button class="circle" @click="showMenu = true" style="display: flex; align-items: center;background-color: rgb(245, 245, 245);">
+            <p style="
+                white-space: nowrap;
+                margin: 0 10px 0 0;
+                font-size: 16px;
+                font-family: '寒蝉半圆体', -apple-system, BlinkMacSystemFont, 'Segoe UI Adjusted',
+      'Segoe UI', 'Liberation Sans', sans-serif;"
+                class="menu-button-text">
+              菜单
+            </p>
+            <svg t="1741761597964" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
+              p-id="22027" width="24" height="24">
+              <path
+                d="M365 663.5v210.7c0 18.6-23.4 26.8-35 12.3L131.2 637.9c-13.3-16.6-1.5-41.1 19.8-41.1h80.7v-400c0-36.8 29.8-66.7 66.7-66.7 36.8 0 66.7 29.8 66.7 66.7v466.7h-0.1z m200-466.7h266.7c36.8 0 66.7 29.8 66.7 66.7s-29.8 66.7-66.7 66.7H565c-36.8 0-66.7-29.8-66.7-66.7 0-36.8 29.9-66.7 66.7-66.7z m0 266.7h200c36.8 0 66.7 29.8 66.7 66.6s-29.8 66.7-66.6 66.7H565c-36.8 0-66.7-29.8-66.7-66.7 0.1-36.8 29.9-66.6 66.7-66.6z m0 266.7h133.3c36.8 0 66.7 29.8 66.7 66.7 0 36.8-29.8 66.7-66.7 66.7H565c-36.8 0-66.7-29.8-66.7-66.7 0.1-36.9 29.9-66.7 66.7-66.7z"
+                p-id="22028" fill="#2c2c2c"></path>
+            </svg>
+          </button>
+          <Menu v-model="showMenu"
+            :items="[{ text: '按照名称排序A-Z' }, { text: '按照大小递增排序' }, { text: '按照大小递减排序' }, { text: '粘贴文件到网盘' }]"
+            @click="onMenuClick" />
         </div>
-      </li>
-      <li v-for="folder in filteredFolders" :key="folder">
-        <div
-          tabindex="0"
-          class="file-item"
-          @click="cwd = folder"
-          @contextmenu.prevent="
-            showContextMenu = true;
-            focusedItem = folder;
-          "
-        >
-          <div class="file-icon">
-            <img
-              src="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/4.0.0/png/file/folder/materialicons/36dp/2x/baseline_folder_black_36dp.png"
-              width="36"
-              height="36"
-              alt="Folder"
-            />
-          </div>
-          <span
-            class="file-name"
-            v-text="folder.match(/.*?([^/]*)\/?$/)[1]"
-          ></span>
-          <div style="margin-right: 10px;margin-left: auto;"
-            @click.stop="
+      </div>
+      <div class="file-list-container">
+        <ul class="file-list">
+          <li v-if="cwd !== ''">
+            <div tabindex="0" class="file-item" @click="cwd = cwd.replace(/[^\/]+\/$/, '')" @contextmenu.prevent>
+              <div class="file-icon">
+                <svg  viewBox="0 0 576 512"
+                  xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+                  <path d="M384 480l48 0c11.4 0 21.9-6 27.6-15.9l112-192c5.8-9.9 5.8-22.1 .1-32.1S555.5 224 544 224l-400 0c-11.4 0-21.9 6-27.6 15.9L48 357.1 48 96c0-8.8 7.2-16 16-16l117.5 0c4.2 0 8.3 1.7 11.3 4.7l26.5 26.5c21 21 49.5 32.8 79.2 32.8L416 144c8.8 0 16 7.2 16 16l0 32 48 0 0-32c0-35.3-28.7-64-64-64L298.5 96c-17 0-33.3-6.7-45.3-18.7L226.7 50.7c-12-12-28.3-18.7-45.3-18.7L64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l23.7 0L384 480z"/>
+                </svg>
+              </div>
+              <div class="file-info-container"><span class="file-name">返回上级目录</span></div>
+
+            </div>
+          </li>
+          <li v-for="folder in filteredFolders" :key="folder">
+            <div tabindex="0" class="file-item" @click="cwd = folder" @contextmenu.prevent="
               showContextMenu = true;
               focusedItem = folder;
-            "
-            >
-              <svg viewBox="0 0 24 24" style="height: 30px; width: 30px;"><path fill="currentColor" d="M10.5,12A1.5,1.5 0 0,1 12,10.5A1.5,1.5 0 0,1 13.5,12A1.5,1.5 0 0,1 12,13.5A1.5,1.5 0 0,1 10.5,12M10.5,16.5A1.5,1.5 0 0,1 12,15A1.5,1.5 0 0,1 13.5,16.5A1.5,1.5 0 0,1 12,18A1.5,1.5 0 0,1 10.5,16.5M10.5,7.5A1.5,1.5 0 0,1 12,6A1.5,1.5 0 0,1 13.5,7.5A1.5,1.5 0 0,1 12,9A1.5,1.5 0 0,1 10.5,7.5M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z"></path></svg>
-          </div>
-        </div>
-      </li>
-      <li v-for="file in filteredFiles" :key="file.key">
-        <div
-          @click="preview(`/raw/${file.key}`)"
-          @contextmenu.prevent="
-            showContextMenu = true;
-            focusedItem = file;
-          "
-        >
-          <div class="file-item">
-            <MimeIcon
-              :content-type="file.httpMetadata.contentType"
-              :thumbnail="
-                file.customMetadata.thumbnail
-                  ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png`
-                  : null
-              "
-            />
-            <div>
-              <div class="file-name" v-text="file.key.split('/').pop()"></div>
-              <div class="file-attr">
-                <span v-text="new Date(file.uploaded).toLocaleString()"></span>
-                <span v-text="formatSize(file.size)"></span>
+              ">
+              <div class="file-icon">
+                <svg  viewBox="0 0 576 512"
+                  xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+                  <path d="M384 480l48 0c11.4 0 21.9-6 27.6-15.9l112-192c5.8-9.9 5.8-22.1 .1-32.1S555.5 224 544 224l-400 0c-11.4 0-21.9 6-27.6 15.9L48 357.1 48 96c0-8.8 7.2-16 16-16l117.5 0c4.2 0 8.3 1.7 11.3 4.7l26.5 26.5c21 21 49.5 32.8 79.2 32.8L416 144c8.8 0 16 7.2 16 16l0 32 48 0 0-32c0-35.3-28.7-64-64-64L298.5 96c-17 0-33.3-6.7-45.3-18.7L226.7 50.7c-12-12-28.3-18.7-45.3-18.7L64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l23.7 0L384 480z"/>
+                </svg>
+              </div>
+              <div class="file-info-container"><span class="file-name" v-text="folder.match(/.*?([^/]*)\/?$/)[1]"></span>
+              </div>
+              <div style="margin-right: 10px;margin-left: auto;" @click.stop="
+                showContextMenu = true;
+                focusedItem = folder;
+                ">
+                <svg t="1741761103305" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                  xmlns="http://www.w3.org/2000/svg" p-id="6484" width="30" height="30">
+                  <path
+                    d="M341.333333 533.333333a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333334z m-469.333334 64H192a64 64 0 0 0-63.893333 60.245334L128 661.333333v149.333334a64 64 0 0 0 60.245333 63.893333L192 874.666667h149.333333a64 64 0 0 0 63.893334-60.245334L405.333333 810.666667v-149.333334a64 64 0 0 0-60.245333-63.893333L341.333333 597.333333z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245334L597.333333 661.333333v149.333334a64 64 0 0 0 60.245334 63.893333L661.333333 874.666667h149.333334a64 64 0 0 0 63.893333-60.245334L874.666667 810.666667v-149.333334a64 64 0 0 0-60.245334-63.893333L810.666667 597.333333zM341.333333 64a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333334zM341.333333 128H192a64 64 0 0 0-63.893333 60.245333L128 192v149.333333a64 64 0 0 0 60.245333 63.893334L192 405.333333h149.333333a64 64 0 0 0 63.893334-60.245333L405.333333 341.333333V192a64 64 0 0 0-60.245333-63.893333L341.333333 128z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245333L597.333333 192v149.333333a64 64 0 0 0 60.245334 63.893334L661.333333 405.333333h149.333334a64 64 0 0 0 63.893333-60.245333L874.666667 341.333333V192a64 64 0 0 0-60.245334-63.893333L810.666667 128z"
+                    fill="#2c2c2c" p-id="6485"></path>
+                </svg>
               </div>
             </div>
-            <div style="margin-right: 10px;margin-left: auto;"
-            @click.stop="
+          </li>
+          <li v-for="file in filteredFiles" :key="file.key">
+            <div @click="preview(`/raw/${file.key}`)" @contextmenu.prevent="
               showContextMenu = true;
-              focusedItem = file;
-            "
-            >
-              <svg viewBox="0 0 24 24" style="height: 30px; width: 30px;"><path fill="currentColor" d="M10.5,12A1.5,1.5 0 0,1 12,10.5A1.5,1.5 0 0,1 13.5,12A1.5,1.5 0 0,1 12,13.5A1.5,1.5 0 0,1 10.5,12M10.5,16.5A1.5,1.5 0 0,1 12,15A1.5,1.5 0 0,1 13.5,16.5A1.5,1.5 0 0,1 12,18A1.5,1.5 0 0,1 10.5,16.5M10.5,7.5A1.5,1.5 0 0,1 12,6A1.5,1.5 0 0,1 13.5,7.5A1.5,1.5 0 0,1 12,9A1.5,1.5 0 0,1 10.5,7.5M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z"></path></svg>
+              focusedItem = file;" class="file-item" style="position: relative;">
+              <MimeIcon :content-type="file.httpMetadata.contentType" :thumbnail="file.customMetadata.thumbnail
+                ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png`
+                : null
+                " />
+              <div class="file-info-container">
+                <div class="file-name" v-text="file.key.split('/').pop()"></div>
+                <div class="file-attr">
+                  <span v-text="new Date(file.uploaded).toLocaleString()"></span>
+                  <span v-text="formatSize(file.size)"></span>
+                </div>
+              </div>
+              <div style="margin-right: 10px;margin-left: auto;" @click.stop="
+                showContextMenu = true;
+                focusedItem = file;
+                ">
+                <svg t="1741761103305" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                  xmlns="http://www.w3.org/2000/svg" p-id="6484" width="30" height="30">
+                  <path
+                    d="M341.333333 533.333333a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333334z m-469.333334 64H192a64 64 0 0 0-63.893333 60.245334L128 661.333333v149.333334a64 64 0 0 0 60.245333 63.893333L192 874.666667h149.333333a64 64 0 0 0 63.893334-60.245334L405.333333 810.666667v-149.333334a64 64 0 0 0-60.245333-63.893333L341.333333 597.333333z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245334L597.333333 661.333333v149.333334a64 64 0 0 0 60.245334 63.893333L661.333333 874.666667h149.333334a64 64 0 0 0 63.893333-60.245334L874.666667 810.666667v-149.333334a64 64 0 0 0-60.245334-63.893333L810.666667 597.333333zM341.333333 64a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333334zM341.333333 128H192a64 64 0 0 0-63.893333 60.245333L128 192v149.333333a64 64 0 0 0 60.245333 63.893334L192 405.333333h149.333333a64 64 0 0 0 63.893334-60.245333L405.333333 341.333333V192a64 64 0 0 0-60.245333-63.893333L341.333333 128z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245333L597.333333 192v149.333333a64 64 0 0 0 60.245334 63.893334L661.333333 405.333333h149.333334a64 64 0 0 0 63.893334-60.245333L874.666667 341.333333V192a64 64 0 0 0-60.245334-63.893333L810.666667 128z"
+                    fill="#2c2c2c" p-id="6485"></path>
+                </svg>
+              </div>
             </div>
-          </div>
+          </li>
+        </ul>
+      </div>
+      <div v-if="loading" style="margin: 20px 0; text-align: center">
+        <span style="font-size: 20px;">加载中...</span>
+      </div>
+      <div v-else-if="!filteredFiles.length && !filteredFolders.length" style="margin: 20px 0; text-align: center">
+        <span style="font-size: 20px;">没有文件</span>
+      </div>
+      <Dialog v-model="showContextMenu">
+        <div
+          style="height: 50px;display: flex; justify-content: center; align-items: center; padding:10px; background: #ddd; margin: 0 0 10px 0; border-radius: 8px;">
+          <div v-text="focusedItem.key || focusedItem" class="contextmenu-filename" @click.stop.prevent
+            style="height:20px;width: 100%; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
         </div>
-      </li>
-    </ul>
-    <div v-if="loading" style="margin-top: 12px; text-align: center">
-      <span>加载中...</span>
+        <ul v-if="typeof focusedItem === 'string'" class="contextmenu-list">
+          <li>
+            <button @click="copyLink(`/?p=${encodeURIComponent(focusedItem)}`)">
+              <span>复制链接</span>
+            </button>
+          </li>
+          <li>
+            <button @click="moveFile(focusedItem + '_$folder$')">
+              <span>移动</span>
+            </button>
+          </li>
+          <li>
+            <button style="color: red" @click="removeFile(focusedItem + '_$folder$')">
+              <span>删除</span>
+            </button>
+          </li>
+        </ul>
+        <ul v-else class="contextmenu-list">
+          <li>
+            <button @click="renameFile(focusedItem.key)">
+              <span>重命名</span>
+            </button>
+          </li>
+          <li>
+            <a :href="`/raw/${focusedItem.key}`" target="_blank" download>
+              <span>下载</span>
+            </a>
+          </li>
+          <li>
+            <button @click="clipboard = focusedItem.key">
+              <span>复制</span>
+            </button>
+          </li>
+          <li>
+            <button @click="moveFile(focusedItem.key)">
+              <span>移动</span>
+            </button>
+          </li>
+          <li>
+            <button @click="copyLink(`/raw/${focusedItem.key}`)">
+              <span>复制链接</span>
+            </button>
+          </li>
+          <li>
+            <button style="color: red" @click="removeFile(focusedItem.key)">
+              <span>删除</span>
+            </button>
+          </li>
+        </ul>
+      </Dialog>
+      <div style="flex:1"></div>
+      <Footer />
     </div>
-    <div
-      v-else-if="!filteredFiles.length && !filteredFolders.length"
-      style="margin-top: 12px; text-align: center"
-    >
-      <span>没有文件</span>
-    </div>
-    <Dialog v-model="showContextMenu">
-      <div
-        v-text="focusedItem.key || focusedItem"
-        class="contextmenu-filename"
-        @click.stop.prevent
-      ></div>
-      <ul v-if="typeof focusedItem === 'string'" class="contextmenu-list">
-        <li>
-          <button @click="copyLink(`/?p=${encodeURIComponent(focusedItem)}`)">
-            <span>复制链接</span>
-          </button>
-        </li>
-        <li>
-          <button @click="moveFile(focusedItem + '_$folder$')">
-            <span>移动</span>
-          </button>
-        </li>
-        <li>
-          <button
-            style="color: red"
-            @click="removeFile(focusedItem + '_$folder$')"
-          >
-            <span>删除</span>
-          </button>
-        </li>
-      </ul>
-      <ul v-else class="contextmenu-list">
-        <li>
-          <button @click="renameFile(focusedItem.key)">
-            <span>重命名</span>
-          </button>
-        </li>
-        <li>
-          <a :href="`/raw/${focusedItem.key}`" target="_blank" download>
-            <span>下载</span>
-          </a>
-        </li>
-        <li>
-          <button @click="clipboard = focusedItem.key">
-            <span>复制</span>
-          </button>
-        </li>
-        <li>
-          <button @click="moveFile(focusedItem.key)">
-            <span>移动</span>
-          </button>
-        </li>
-        <li>
-          <button @click="copyLink(`/raw/${focusedItem.key}`)">
-            <span>复制链接</span>
-          </button>
-        </li>
-        <li>
-          <button style="color: red" @click="removeFile(focusedItem.key)">
-            <span>删除</span>
-          </button>
-        </li>
-      </ul>
-    </Dialog>
   </div>
 </template>
 
@@ -214,9 +213,12 @@ import Dialog from "./Dialog.vue";
 import Menu from "./Menu.vue";
 import MimeIcon from "./MimeIcon.vue";
 import UploadPopup from "./UploadPopup.vue";
+import Footer from "./Footer.vue";
 
 export default {
   data: () => ({
+    isAuthenticated: false, // 【新增】认证状态
+    passwordInput: "",      // 【新增】密码输入框
     cwd: new URL(window.location).searchParams.get("p") || "",
     files: [],
     folders: [],
@@ -230,6 +232,7 @@ export default {
     showUploadPopup: false,
     uploadProgress: null,
     uploadQueue: [],
+    backgroundImageUrl: "/assets/bg-light.webp"
   }),
 
   computed: {
@@ -253,6 +256,18 @@ export default {
   },
 
   methods: {
+    // 【新增】提交密码逻辑
+    submitPassword() {
+      if (this.passwordInput === "hejianwei") {
+        this.isAuthenticated = true;
+        localStorage.setItem("flaredrive_auth", "hejianwei"); // 存入本地缓存
+        this.fetchFiles(); // 验证通过后立即加载数据
+      } else {
+        alert("密码错误！");
+        this.passwordInput = "";
+      }
+    },
+
     copyLink(link) {
       const url = new URL(link, window.location.origin);
       navigator.clipboard.writeText(url.toString());
@@ -278,12 +293,15 @@ export default {
           .then((value) => {
             if (value.redirected) window.location.href = value.url;
           })
-          .catch(() => {});
+          .catch(() => { });
         console.log(`Create folder failed`);
       }
     },
 
     fetchFiles() {
+      // 【新增】如果未登录，阻止请求文件
+      if (!this.isAuthenticated) return;
+
       this.files = [];
       this.folders = [];
       this.loading = true;
@@ -325,16 +343,16 @@ export default {
 
     onMenuClick(text) {
       switch (text) {
-        case "名称A-Z":
+        case "按照名称排序A-Z":
           this.order = null;
           break;
-        case "大小↑":
+        case "按照大小递增排序":
           this.order = "大小↑";
           break;
-        case "大小↓":
+        case "按照大小递减排序":
           this.order = "大小↓";
           break;
-        case "粘贴":
+        case "粘贴文件到网盘":
           return this.pasteFile();
       }
       this.files.sort((a, b) => {
@@ -355,7 +373,7 @@ export default {
       fileElement.value = null;
     },
 
-    preview(filePath){
+    preview(filePath) {
       window.open(filePath);
     },
 
@@ -393,7 +411,7 @@ export default {
               .then((value) => {
                 if (value.redirected) window.location.href = value.url;
               })
-              .catch(() => {});
+              .catch(() => { });
             console.log(`Upload ${digestHex}.png failed`);
           }
         } catch (error) {
@@ -423,7 +441,7 @@ export default {
           .then((value) => {
             if (value.redirected) window.location.href = value.url;
           })
-          .catch(() => {});
+          .catch(() => { });
         console.log(`Upload ${file.name} failed`, error);
       }
       setTimeout(this.processUploadQueue);
@@ -447,7 +465,7 @@ export default {
       // 获取当前的目录结构
       const currentPath = this.cwd; // 当前所在目录
       const allFolders = [...this.folders]; // 所有可用目录
-      
+
       // 如果不在根目录，添加返回上级目录选项
       if (currentPath !== '') {
         const parentPath = currentPath.replace(/[^\/]+\/$/, '');
@@ -455,49 +473,49 @@ export default {
           allFolders.unshift(parentPath);
         }
       }
-      
+
       // 添加根目录选项
       if (!allFolders.includes('')) {
         allFolders.unshift('');
       }
-      
+
       // 构建选择列表
       const folderOptions = allFolders.map(folder => {
-        const displayName = folder === '' ? '根目录' : 
-                          folder === currentPath ? '当前目录' :
-                          folder.replace(/.*\/(?!$)|\//g, '') + '/';
+        const displayName = folder === '' ? '根目录' :
+          folder === currentPath ? '当前目录' :
+            folder.replace(/.*\/(?!$)|\//g, '') + '/';
         return {
           display: displayName,
           value: folder
         };
       });
-      
+
       // 创建选择提示
-      const options = folderOptions.map((opt, index) => 
+      const options = folderOptions.map((opt, index) =>
         `${index + 1}. ${opt.display}`
       ).join('\n');
-      
+
       const promptText = `请选择目标目录(输入数字):\n${options}\n`;
       const selection = window.prompt(promptText);
-      
+
       if (!selection) return;
-      
+
       const selectedIndex = parseInt(selection) - 1;
       if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= folderOptions.length) {
         alert('无效的选择');
         return;
       }
-      
+
       const targetPath = folderOptions[selectedIndex].value;
-      
+
       // 获取文件名
       const fileName = key.split('/').pop();
       // 如果是文件夹,需要移除_$folder$后缀
       const finalFileName = fileName.endsWith('_$folder$') ? fileName.slice(0, -9) : fileName;
-      
+
       // 修复：正确处理目标路径，避免双斜杠
       const normalizedPath = targetPath === '' ? '' : (targetPath.endsWith('/') ? targetPath : targetPath + '/');
-      
+
       try {
         // 如果是目录（以_$folder$结尾），则需要移动整个目录内容
         if (key.endsWith('_$folder$')) {
@@ -505,25 +523,25 @@ export default {
           const sourceBasePath = key.slice(0, -9);
           // 获取目标目录的基础路径，修复根目录的情况
           const targetBasePath = normalizedPath + finalFileName + '/';
-          
+
           // 递归获取所有子文件和子目录
           const allItems = await this.getAllItems(sourceBasePath);
-          
+
           // 显示进度提示
           const totalItems = allItems.length;
           let processedItems = 0;
-          
+
           // 移动所有项目
           for (const item of allItems) {
             const relativePath = item.key.substring(sourceBasePath.length);
             const newPath = targetBasePath + relativePath;
-            
+
             try {
               // 复制到新位置
               await this.copyPaste(item.key, newPath);
               // 删除原位置
               await axios.delete(`/api/write/items/${item.key}`);
-              
+
               // 更新进度
               processedItems++;
               this.uploadProgress = (processedItems / totalItems) * 100;
@@ -531,12 +549,12 @@ export default {
               console.error(`移动 ${item.key} 失败:`, error);
             }
           }
-          
+
           // 移动目录标记
           const targetFolderPath = targetBasePath.slice(0, -1) + '_$folder$';
           await this.copyPaste(key, targetFolderPath);
           await axios.delete(`/api/write/items/${key}`);
-          
+
           // 清除进度
           this.uploadProgress = null;
         } else {
@@ -545,7 +563,7 @@ export default {
           await this.copyPaste(key, targetFilePath);
           await axios.delete(`/api/write/items/${key}`);
         }
-        
+
         // 刷新文件列表
         this.fetchFiles();
       } catch (error) {
@@ -558,19 +576,19 @@ export default {
     async getAllItems(prefix) {
       const items = [];
       let marker = null;
-      
+
       do {
         const url = new URL(`/api/children/${prefix}`, window.location.origin);
         if (marker) {
           url.searchParams.set('marker', marker);
         }
-        
+
         const response = await fetch(url);
         const data = await response.json();
-        
+
         // 添加文件
         items.push(...data.value);
-        
+
         // 处理子目录
         for (const folder of data.folders) {
           // 添加目录标记
@@ -579,15 +597,15 @@ export default {
             size: 0,
             uploaded: new Date().toISOString(),
           });
-          
+
           // 递归获取子目录内容
           const subItems = await this.getAllItems(folder);
           items.push(...subItems);
         }
-        
+
         marker = data.marker;
       } while (marker);
-      
+
       return items;
     },
 
@@ -614,15 +632,22 @@ export default {
             : url.searchParams.delete("p");
           window.history.pushState(null, "", url.toString());
         }
-        document.title = `${
-          this.cwd.replace(/.*\/(?!$)|\//g, "") || "/"
-        } - 文件库`;
+        document.title = this.cwd.replace(/.*\/(?!$)|\//g, "") === "/" 
+            ? "FlareDrive-R2 - 优雅的 Cloudflare R2 网盘文件库"
+            : `${this.cwd.replace(/.*\/(?!$)|\//g, "") || "/" } - 优雅的 Cloudflare R2 网盘文件库`;
       },
       immediate: true,
     },
   },
 
   created() {
+    // 【修改点3】页面创建时，先检查本地缓存
+    if (localStorage.getItem("flaredrive_auth") === "hejianwei") {
+      this.isAuthenticated = true;
+      // 注意：这里需要再次调用 fetchFiles，虽然 watch 会调用，但有时时序问题可能导致第一次被拦截
+      this.fetchFiles();
+    }
+
     window.addEventListener("popstate", (ev) => {
       const searchParams = new URL(window.location).searchParams;
       if (searchParams.get("p") !== this.cwd)
@@ -635,40 +660,132 @@ export default {
     Menu,
     MimeIcon,
     UploadPopup,
+    Footer,
   },
 };
 </script>
 
 <style>
+/* 【新增】登录界面样式 */
+.login-overlay {
+  display: flex;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  background-size: cover;
+  background-position: center;
+  z-index: 9999;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.login-box {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 300px;
+  backdrop-filter: blur(10px);
+}
+
+.login-btn {
+  background: #2c2c2c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.login-btn:hover {
+  background: #000;
+}
+
+/* 原有样式保持不变 */
 .main {
-  height: 100%;
+  display: flex;
+  height: 100%;
+  /* background-image: url(/assets/bg-light.webp); */
+  background-size: cover;
+  background-position: center;
+  overflow-y: auto;
+  flex-direction: column;
 }
 
 .app-bar {
-  position: sticky;
-  top: 0;
-  padding: 8px;
-  background-color: white;
-  display: flex;
+  z-index: 2;
+  position: sticky;
+  top: 0;
+  padding: 8px;
+  background-color: white;
+  display: flex;
+}
+
+@media (max-width: 400px) {
+  .menu-button {
+    margin: 0;
+    padding: 0;
+  }
+
+  button.circle {
+    padding: 0 8px;
+  }
+  .menu-button-text {
+    display: none !important;
+  }
+}
+
+@media (max-width: 340px) {
+  .app-title-container {
+    display: none !important;
+  }
 }
 
 .menu-button {
-  display: flex;
-  position: relative;
-  margin-left: 4px;
+  display: flex;
+  position: relative;
+  margin-left: 10px;
+  padding: 0 10px;
 }
 
-.menu-button > button {
-  transition: background-color 0.2s ease;
+.file-list-container {
+  margin: 20px auto;
+  padding: 10px;
+  width: 60%;
+  max-width: 95%;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: width 0.3s ease;
 }
 
-.menu-button > button:hover {
-  background-color: whitesmoke;
+@media (max-width: 1280px) {
+  .file-list-container {
+    width: 768px;
+    padding: 10px;
+  }
+}
+
+.menu-button>button {
+  transition: background-color 0.2s ease;
+}
+
+.menu-button>button:hover {
+  background-color: rgb(212, 212, 212);
 }
 
 .menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: absolute;
+  top: 100%;
+  right: 0;
 }
 </style>
