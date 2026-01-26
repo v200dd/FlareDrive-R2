@@ -67,8 +67,10 @@
             @click="onMenuClick" />
         </div>
       </div>
+
       <div class="file-list-container">
         <ul class="file-list">
+          
           <li v-if="cwd !== ''">
             <div tabindex="0" class="file-item" @click="cwd = cwd.replace(/[^\/]+\/$/, '')" @contextmenu.prevent>
               <div class="file-icon">
@@ -78,14 +80,19 @@
                 </svg>
               </div>
               <div class="file-info-container"><span class="file-name">返回上级目录</span></div>
-
             </div>
           </li>
+
           <li v-for="folder in filteredFolders" :key="folder">
             <div tabindex="0" class="file-item" @click="cwd = folder" @contextmenu.prevent="
               showContextMenu = true;
               focusedItem = folder;
               ">
+              
+              <div class="checkbox-wrapper" @click.stop>
+                <input type="checkbox" :value="folder + '_$folder$'" v-model="selectedItems" class="custom-checkbox">
+              </div>
+
               <div class="file-icon">
                 <svg  viewBox="0 0 576 512"
                   xmlns="http://www.w3.org/2000/svg" width="36" height="36">
@@ -107,10 +114,16 @@
               </div>
             </div>
           </li>
+
           <li v-for="file in filteredFiles" :key="file.key">
             <div @click="preview(`/raw/${file.key}`)" @contextmenu.prevent="
               showContextMenu = true;
               focusedItem = file;" class="file-item" style="position: relative;">
+              
+              <div class="checkbox-wrapper" @click.stop>
+                <input type="checkbox" :value="file.key" v-model="selectedItems" class="custom-checkbox">
+              </div>
+
               <MimeIcon :content-type="file.httpMetadata.contentType" :thumbnail="file.customMetadata.thumbnail
                 ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png`
                 : null
@@ -137,12 +150,26 @@
           </li>
         </ul>
       </div>
+
       <div v-if="loading" style="margin: 20px 0; text-align: center">
         <span style="font-size: 20px;">加载中...</span>
       </div>
       <div v-else-if="!filteredFiles.length && !filteredFolders.length" style="margin: 20px 0; text-align: center">
         <span style="font-size: 20px;">没有文件</span>
       </div>
+
+      <transition name="slide-up">
+        <div v-if="selectedItems.length > 0" class="bulk-action-bar">
+          <div class="bulk-info">
+            <span>已选择 {{ selectedItems.length }} 项</span>
+          </div>
+          <div class="bulk-buttons">
+            <button @click="selectedItems = []" class="cancel-btn">取消</button>
+            <button @click="batchDelete" class="delete-btn">删除选中</button>
+          </div>
+        </div>
+      </transition>
+
       <Dialog v-model="showContextMenu">
         <div
           style="height: 50px;display: flex; justify-content: center; align-items: center; padding:10px; background: #ddd; margin: 0 0 10px 0; border-radius: 8px;">
@@ -235,7 +262,8 @@ export default {
     showUploadPopup: false,
     uploadProgress: null,
     uploadQueue: [],
-    backgroundImageUrl: "/assets/bg-light.webp"
+    backgroundImageUrl: "/assets/bg-light.webp",
+    selectedItems: [], // 存储选中的文件/文件夹 Key
   }),
 
   computed: {
@@ -455,6 +483,35 @@ export default {
       this.fetchFiles();
     },
 
+    // 批量删除
+    async batchDelete() {
+      const count = this.selectedItems.length;
+      if (count === 0) return;
+
+      if (!window.confirm(`确定要永久删除这 ${count} 个项目吗？`)) return;
+
+      this.loading = true; // 显示加载状态
+      
+      try {
+        // 并发执行删除请求
+        const deletePromises = this.selectedItems.map(key => 
+          axios.delete(`/api/write/items/${key}`)
+        );
+
+        await Promise.all(deletePromises);
+        
+        // 删除成功后
+        this.selectedItems = []; // 清空选中
+        this.fetchFiles();       // 刷新列表
+      } catch (error) {
+        console.error("Batch delete failed", error);
+        alert("部分文件删除失败，请重试");
+        this.fetchFiles();
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async renameFile(key) {
       const newName = window.prompt("重命名为:");
       if (!newName) return;
@@ -574,7 +631,7 @@ export default {
       }
     },
 
-    // 新增：递归获取目录下所有文件和子目录
+    // 递归获取目录下所有文件和子目录
     async getAllItems(prefix) {
       const items = [];
       let marker = null;
@@ -626,6 +683,7 @@ export default {
   watch: {
     cwd: {
       handler() {
+        this.selectedItems = []; // 切换目录时清空选中状态
         this.fetchFiles();
         const url = new URL(window.location);
         if ((url.searchParams.get("p") || "") !== this.cwd) {
@@ -757,7 +815,6 @@ export default {
   padding: 0 10px;
 }
 
-/* 修复点2：将宽度从 60% 改为 95% 并设置最大宽度，防止大屏过宽，小屏过窄 */
 .file-list-container {
   margin: 20px auto;
   padding: 10px;
@@ -807,5 +864,87 @@ export default {
   justify-content: center;
   cursor: pointer;
   z-index: 100;
+}
+
+/* --- 新增：复选框和批量操作栏样式 --- */
+
+/* 复选框容器 */
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px 0 5px;
+  cursor: default;
+}
+
+/* 自定义复选框 */
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #007aff;
+}
+
+/* 底部批量操作栏 */
+.bulk-action-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 600px;
+  background-color: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(12px);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 50px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+  z-index: 1000;
+}
+
+.bulk-info {
+  font-weight: bold;
+  font-size: 16px;
+  padding-left: 10px;
+}
+
+.bulk-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.bulk-buttons button {
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.cancel-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.delete-btn {
+  background-color: #ff3b30;
+  color: white;
+}
+
+.bulk-buttons button:hover {
+  opacity: 0.8;
+}
+
+/* 进入/退出动画 */
+.slide-up-enter-active, .slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-up-enter, .slide-up-leave-to {
+  transform: translate(-50%, 150%);
+  opacity: 0;
 }
 </style>
