@@ -63,7 +63,13 @@
             </svg>
           </button>
           <Menu v-model="showMenu"
-            :items="[{ text: '按照名称排序A-Z' }, { text: '按照大小递增排序' }, { text: '按照大小递减排序' }, { text: '粘贴文件到网盘' }]"
+            :items="[
+              { text: '按照名称排序A-Z' }, 
+              { text: '按照大小递增排序' }, 
+              { text: '按照大小递减排序' }, 
+              { text: '全选/取消全选' },
+              { text: '粘贴文件到网盘' }
+            ]"
             @click="onMenuClick" />
         </div>
       </div>
@@ -164,6 +170,9 @@
             <span>已选择 {{ selectedItems.length }} 项</span>
           </div>
           <div class="bulk-buttons">
+            <button @click="toggleSelectAll" class="select-all-btn">
+              {{ isAllSelected ? '取消全选' : '全选' }}
+            </button>
             <button @click="selectedItems = []" class="cancel-btn">取消</button>
             <button @click="batchDelete" class="delete-btn">删除选中</button>
           </div>
@@ -284,6 +293,12 @@ export default {
       }
       return folders;
     },
+
+    // 判断是否全选
+    isAllSelected() {
+      const totalCount = this.filteredFolders.length + this.filteredFiles.length;
+      return totalCount > 0 && this.selectedItems.length === totalCount;
+    },
   },
 
   methods: {
@@ -371,6 +386,21 @@ export default {
       this.uploadFiles(files);
     },
 
+    toggleSelectAll() {
+      const totalItems = this.filteredFolders.length + this.filteredFiles.length;
+      const isAllSelected = totalItems > 0 && this.selectedItems.length === totalItems;
+
+      if (isAllSelected) {
+        // 如果已全选，则取消所有
+        this.selectedItems = [];
+      } else {
+        // 否则全选（注意：文件夹需要加上 _$folder$ 后缀）
+        const folders = this.filteredFolders.map(f => f + '_$folder$');
+        const files = this.filteredFiles.map(f => f.key);
+        this.selectedItems = [...folders, ...files];
+      }
+    },
+
     onMenuClick(text) {
       switch (text) {
         case "按照名称排序A-Z":
@@ -382,6 +412,9 @@ export default {
         case "按照大小递减排序":
           this.order = "大小↓";
           break;
+        case "全选/取消全选":
+          this.toggleSelectAll();
+          return;
         case "粘贴文件到网盘":
           return this.pasteFile();
       }
@@ -866,23 +899,36 @@ export default {
   z-index: 100;
 }
 
-/* --- 新增：复选框和批量操作栏样式 --- */
+/* --- 复选框和批量操作栏样式 --- */
 
-/* 复选框容器 */
+/* 1. 复选框容器：默认隐藏（透明），有过渡效果 */
 .checkbox-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 10px 0 5px;
-  cursor: default;
+  cursor: pointer;
+  opacity: 0; /* 默认不可见 */
+  transition: opacity 0.2s ease;
 }
 
-/* 自定义复选框 */
+/* 2. 鼠标悬停文件行时，显示复选框 */
+.file-item:hover .checkbox-wrapper {
+  opacity: 1;
+}
+
+/* 3. 如果复选框被勾选，保持显示 */
+.checkbox-wrapper:has(input:checked) {
+  opacity: 1;
+}
+
+/* 自定义复选框外观 */
 .custom-checkbox {
   width: 18px;
   height: 18px;
   cursor: pointer;
   accent-color: #007aff;
+  border-radius: 4px;
 }
 
 /* 底部批量操作栏 */
@@ -913,7 +959,7 @@ export default {
 
 .bulk-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px; /* 按钮间距 */
 }
 
 .bulk-buttons button {
@@ -923,6 +969,12 @@ export default {
   font-size: 14px;
   cursor: pointer;
   transition: opacity 0.2s;
+}
+
+/* 全选按钮 */
+.select-all-btn {
+  background-color: #007aff;
+  color: white;
 }
 
 .cancel-btn {
