@@ -20,10 +20,13 @@ export function parseBucketPath(context: BucketContext): [R2Bucket | undefined, 
   const routes = ["/api/children/", "/api/write/items/", "/raw/"];
   const route = routes.find((prefix) => url.pathname.startsWith(prefix));
   const segments = Array.isArray(params.path) ? params.path.join("/") : params.path || "";
-  // Pages route params are already decoded. Raw paths come from the URL and need decoding once.
-  const path = route === "/raw/"
-    ? decodeURIComponent(url.pathname.slice(route.length))
-    : segments;
+  // Pages passes catch-all route segments as percent-encoded strings.
+  let path = segments;
+  try {
+    path = segments.split("/").map((segment) => decodeURIComponent(segment)).join("/");
+  } catch {
+    path = segments;
+  }
   return [isBucket(bucket) ? bucket : undefined, path];
 }
 

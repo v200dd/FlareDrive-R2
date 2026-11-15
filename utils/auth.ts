@@ -11,9 +11,19 @@ type Identity = { username: string; allowList: string[] };
 type Account = Identity & { password: string };
 
 function parseAllowList(value: unknown): string[] {
-  if (Array.isArray(value)) return value.filter((entry): entry is string => typeof entry === "string").map((entry) => entry.trim()).filter(Boolean);
-  if (typeof value !== "string") return [];
-  return value.split(",").map((entry) => entry.trim()).filter(Boolean);
+  const entries = Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : typeof value === "string" ? value.split(",") : [];
+
+  return entries
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      if (entry === "*") return entry;
+      const path = entry.replace(/^\/+|\/+$/g, "");
+      return path ? `${path}/` : "";
+    })
+    .filter(Boolean);
 }
 
 function legacyAccounts(context: AuthContext): Account[] {
