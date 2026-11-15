@@ -1,263 +1,207 @@
 <template>
-  <div style="height: 100%; width: 100%;">
-
-    <div v-if="!isAuthenticated" class="login-overlay" :style="{ backgroundImage: `url('${backgroundImageUrl}')` }">
-      <div class="login-box">
-        <img src="/assets/homescreen.png" alt="Logo" style="height: 48px; margin-bottom: 20px;" />
-        <h2 style="margin-bottom: 20px; color: #333; font-weight: normal;">请输入访问密码</h2>
-        <input 
-          type="password" 
-          v-model="passwordInput" 
-          @keyup.enter="submitPassword"
-          placeholder="输入密码"
-          style="padding: 10px; width: 80%; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; outline: none;"
-        />
-        <button @click="submitPassword" class="login-btn">
-          进入网盘
-        </button>
+  <div class="drive-app">
+    <div v-if="sessionLoading" class="session-screen" role="status" aria-live="polite">
+      <div class="brand-mark brand-mark-large">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 23h16a5 5 0 0 0 .2-10A8.5 8.5 0 0 0 8 11a6 6 0 0 0 0 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="m12 17 4-4 4 4m-4-4v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
+      <span class="spinner"></span>
+      <p>正在打开你的网盘…</p>
     </div>
 
-    <div class="main" v-else
-      @dragenter.prevent 
-      @dragover.prevent 
-      @drop.prevent="onDrop"
-      :style="{ backgroundImage: `url('${backgroundImageUrl}')` }"
-    >
-      <progress v-if="uploadProgress !== null" :value="uploadProgress" max="100"></progress>
-      <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder"></UploadPopup>
-      
-      <button class="upload-button circle" @click="showUploadPopup = true">
-        <svg t="1741764069699" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
-          p-id="24280" width="24" height="24">
-          <path
-            d="M576 557.7088V934.4H448V560.4416l-43.8912 43.8848L313.6 513.8176l199.1232-199.1168 0.64 0.64 0.64-0.64 199.1232 199.1168-90.5088 90.5088L576 557.7088zM704 678.4h32c88.3648 0 160-71.6352 160-160s-71.6352-160-160-160c-20.5184 0-40.128 3.8592-58.1568 10.8992C670.336 270.1248 587.4944 192 486.4 192c-106.0416 0-192 85.9584-192 192 0 15.9104 1.9328 31.3728 5.5872 46.1568A127.7504 127.7504 0 0 0 256 422.4c-70.6944 0-128 57.3056-128 128s57.3056 128 128 128h64v128H256c-141.3824 0-256-114.6176-256-256 0-113.3184 73.632-209.4464 175.6608-243.136C210.0352 167.584 336.1216 64 486.4 64c121.312 0 227.552 67.712 281.7728 168.1792C912.0896 248.1792 1024 370.2208 1024 518.4c0 159.0592-128.9408 288-288 288h-32v-128z"
-            fill="#e6e6e6" p-id="24281"></path>
-        </svg>
-      </button>
-
-      <div class="app-bar">
-        <a class="app-title-container" style="display: flex; align-items: center;" href="/">
-          <img src="/assets/homescreen.png" alt="FlareDrive" style="height: 24px" />
-          <h1 class="app-title" style="font-size: 20px;margin: 0 25px 0 8px; user-select: none;">FlareDrive</h1>
-        </a>
-
-        <input type="search" v-model="search" aria-label="Search" placeholder="🍿 输入以全局搜索文件" style="flex: 1; margin: 0 10px;" />
-        
-        <div class="menu-button">
-          <button class="circle" @click="showMenu = true" style="display: flex; align-items: center;background-color: rgb(245, 245, 245);">
-            <p style="
-                white-space: nowrap;
-                margin: 0 10px 0 0;
-                font-size: 16px;
-                font-family: '寒蝉半圆体', -apple-system, BlinkMacSystemFont, 'Segoe UI Adjusted',
-      'Segoe UI', 'Liberation Sans', sans-serif;"
-                class="menu-button-text">
-              菜单
-            </p>
-            <svg t="1741761597964" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
-              p-id="22027" width="24" height="24">
-              <path
-                d="M365 663.5v210.7c0 18.6-23.4 26.8-35 12.3L131.2 637.9c-13.3-16.6-1.5-41.1 19.8-41.1h80.7v-400c0-36.8 29.8-66.7 66.7-66.7 36.8 0 66.7 29.8 66.7 66.7v466.7h-0.1z m200-466.7h266.7c36.8 0 66.7 29.8 66.7 66.7s-29.8 66.7-66.7 66.7H565c-36.8 0-66.7-29.8-66.7-66.7 0-36.8 29.9-66.7 66.7-66.7z m0 266.7h200c36.8 0 66.7 29.8 66.7 66.6s-29.8 66.7-66.6 66.7H565c-36.8 0-66.7-29.8-66.7-66.7 0.1-36.8 29.9-66.6 66.7-66.6z m0 266.7h133.3c36.8 0 66.7 29.8 66.7 66.7 0 36.8-29.8 66.7-66.7 66.7H565c-36.8 0-66.7-29.8-66.7-66.7 0.1-36.9 29.9-66.7 66.7-66.7z"
-                p-id="22028" fill="#2c2c2c"></path>
-            </svg>
-          </button>
-          <Menu v-model="showMenu"
-            :items="[
-              { text: '按照名称排序A-Z' }, 
-              { text: '按照大小递增排序' }, 
-              { text: '按照大小递减排序' }, 
-              { text: '全选/取消全选' },
-              { text: '粘贴文件到网盘' }
-            ]"
-            @click="onMenuClick" />
+    <div v-else-if="!isAuthenticated || requireLogin" class="login-screen">
+      <form class="login-card" @submit.prevent="submitPassword">
+        <div class="brand-mark brand-mark-large">
+          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 23h16a5 5 0 0 0 .2-10A8.5 8.5 0 0 0 8 11a6 6 0 0 0 0 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="m12 17 4-4 4 4m-4-4v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-      </div>
+        <p class="login-eyebrow">FlareDrive</p>
+        <h1>欢迎回来</h1>
+        <p class="login-description">登录网盘，继续管理你的文件。</p>
+        <label for="username">账号</label>
+        <input id="username" v-model.trim="usernameInput" type="text" autocomplete="username" placeholder="输入账号" required :disabled="loginPending" />
+        <label for="password">密码</label>
+        <input id="password" v-model="passwordInput" type="password" autocomplete="current-password" placeholder="输入密码" required :disabled="loginPending" />
+        <p v-if="loginError" class="form-error" role="alert">{{ loginError }}</p>
+        <p v-if="loadError" class="form-error" role="alert">{{ loadError }}</p>
+        <button type="submit" class="primary-button login-submit" :disabled="loginPending">
+          <span v-if="loginPending" class="spinner"></span>
+          {{ loginPending ? '正在登录…' : '进入网盘' }}
+          <svg v-if="!loginPending" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </form>
+    </div>
 
-      <div class="file-list-container">
-        <ul class="file-list">
-          
-          <li v-if="cwd !== ''">
-            <div tabindex="0" class="file-item" @click="cwd = cwd.replace(/[^\/]+\/$/, '')" @contextmenu.prevent>
-              <div class="file-icon">
-                <svg  viewBox="0 0 576 512"
-                  xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-                  <path d="M384 480l48 0c11.4 0 21.9-6 27.6-15.9l112-192c5.8-9.9 5.8-22.1 .1-32.1S555.5 224 544 224l-400 0c-11.4 0-21.9 6-27.6 15.9L48 357.1 48 96c0-8.8 7.2-16 16-16l117.5 0c4.2 0 8.3 1.7 11.3 4.7l26.5 26.5c21 21 49.5 32.8 79.2 32.8L416 144c8.8 0 16 7.2 16 16l0 32 48 0 0-32c0-35.3-28.7-64-64-64L298.5 96c-17 0-33.3-6.7-45.3-18.7L226.7 50.7c-12-12-28.3-18.7-45.3-18.7L64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l23.7 0L384 480z"/>
-                </svg>
-              </div>
-              <div class="file-info-container"><span class="file-name">返回上级目录</span></div>
+    <div v-else class="main" @dragenter.prevent @dragover.prevent @drop.prevent="onDrop">
+      <aside class="sidebar">
+        <button class="brand" @click="cwd = ''; search = ''" aria-label="FlareDrive，返回全部文件">
+          <span class="brand-mark">
+            <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 23h16a5 5 0 0 0 .2-10A8.5 8.5 0 0 0 8 11a6 6 0 0 0 0 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="m12 17 4-4 4 4m-4-4v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span>FlareDrive<span class="brand-caption">让文件，井井有条</span></span>
+        </button>
+        <div class="sidebar-section-label">文件空间</div>
+        <button class="sidebar-nav active" @click="cwd = ''; search = ''">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3V7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          全部文件
+          <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m10 7 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="sidebar-account">
+          <span class="account-avatar">{{ authenticatedUser ? authenticatedUser.slice(0, 1).toUpperCase() : '访' }}</span>
+          <div><strong>{{ authenticatedUser || '访客' }}</strong><span>{{ authenticatedUser ? '已登录' : '访客访问' }}</span></div>
+          <button class="icon-button" @click="logout" :aria-label="authenticatedUser ? '退出登录' : '登录账号'" :title="authenticatedUser ? '退出登录' : '登录账号'">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5H5v14h4m5-12 5 5-5 5M9 12h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="app-bar">
+          <div class="mobile-brand"><span class="brand-mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 23h16a5 5 0 0 0 .2-10A8.5 8.5 0 0 0 8 11a6 6 0 0 0 0 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="m12 17 4-4 4 4m-4-4v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>FlareDrive</strong></div>
+          <span class="header-label">我的网盘</span>
+          <label class="search-field">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <input type="search" v-model="search" aria-label="搜索当前目录的文件" placeholder="搜索当前目录的文件…" />
+          </label>
+          <button class="mobile-account icon-button" @click="logout" :aria-label="authenticatedUser ? '退出登录' : '登录账号'" :title="authenticatedUser ? '退出登录' : '登录账号'"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.7"/><path d="M5 20v-2a7 7 0 0 1 14 0v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+        </header>
+
+        <main class="content">
+          <div class="page-heading">
+            <div>
+              <p class="page-eyebrow">你的文件空间</p>
+              <h1>{{ cwd ? cwd.split('/').filter(Boolean).pop() : '全部文件' }}</h1>
+              <p class="page-description">收藏每一份重要，随时找到所需。</p>
             </div>
-          </li>
+            <button class="primary-button upload-button" @click="showUploadPopup = true">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              上传文件
+            </button>
+          </div>
 
-          <li v-for="folder in filteredFolders" :key="folder">
-            <div tabindex="0" class="file-item" @click="cwd = folder" @contextmenu.prevent="
-              showContextMenu = true;
-              focusedItem = folder;
-              ">
-              
-              <div class="checkbox-wrapper" @click.stop>
-                <input type="checkbox" :value="folder + '_$folder$'" v-model="selectedItems" class="custom-checkbox">
-              </div>
-
-              <div class="file-icon">
-                <svg  viewBox="0 0 576 512"
-                  xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-                  <path d="M384 480l48 0c11.4 0 21.9-6 27.6-15.9l112-192c5.8-9.9 5.8-22.1 .1-32.1S555.5 224 544 224l-400 0c-11.4 0-21.9 6-27.6 15.9L48 357.1 48 96c0-8.8 7.2-16 16-16l117.5 0c4.2 0 8.3 1.7 11.3 4.7l26.5 26.5c21 21 49.5 32.8 79.2 32.8L416 144c8.8 0 16 7.2 16 16l0 32 48 0 0-32c0-35.3-28.7-64-64-64L298.5 96c-17 0-33.3-6.7-45.3-18.7L226.7 50.7c-12-12-28.3-18.7-45.3-18.7L64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l23.7 0L384 480z"/>
-                </svg>
-              </div>
-              <div class="file-info-container"><span class="file-name" v-text="folder.match(/.*?([^/]*)\/?$/)[1]"></span>
-              </div>
-              <div style="margin-right: 10px;margin-left: auto;" @click.stop="
-                showContextMenu = true;
-                focusedItem = folder;
-                ">
-                <svg t="1741761103305" class="icon" viewBox="0 0 1024 1024" version="1.1"
-                  xmlns="http://www.w3.org/2000/svg" p-id="6484" width="30" height="30">
-                  <path
-                    d="M341.333333 533.333333a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333334z m-469.333334 64H192a64 64 0 0 0-63.893333 60.245334L128 661.333333v149.333334a64 64 0 0 0 60.245333 63.893333L192 874.666667h149.333333a64 64 0 0 0 63.893334-60.245334L405.333333 810.666667v-149.333334a64 64 0 0 0-60.245333-63.893333L341.333333 597.333333z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245334L597.333333 661.333333v149.333334a64 64 0 0 0 60.245334 63.893333L661.333333 874.666667h149.333334a64 64 0 0 0 63.893333-60.245334L874.666667 810.666667v-149.333334a64 64 0 0 0-60.245334-63.893333L810.666667 597.333333zM341.333333 64a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333334zM341.333333 128H192a64 64 0 0 0-63.893333 60.245333L128 192v149.333333a64 64 0 0 0 60.245333 63.893334L192 405.333333h149.333333a64 64 0 0 0 63.893334-60.245333L405.333333 341.333333V192a64 64 0 0 0-60.245333-63.893333L341.333333 128z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245333L597.333333 192v149.333333a64 64 0 0 0 60.245334 63.893334L661.333333 405.333333h149.333334a64 64 0 0 0 63.893333-60.245333L874.666667 341.333333V192a64 64 0 0 0-60.245334-63.893333L810.666667 128z"
-                    fill="#2c2c2c" p-id="6485"></path>
-                </svg>
-              </div>
-            </div>
-          </li>
-
-          <li v-for="file in filteredFiles" :key="file.key">
-            <div @click="preview(`/raw/${file.key}`)" @contextmenu.prevent="
-              showContextMenu = true;
-              focusedItem = file;" class="file-item" style="position: relative;">
-              
-              <div class="checkbox-wrapper" @click.stop>
-                <input type="checkbox" :value="file.key" v-model="selectedItems" class="custom-checkbox">
-              </div>
-
-              <MimeIcon :content-type="file.httpMetadata.contentType" :thumbnail="file.customMetadata.thumbnail
-                ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png`
-                : null
-                " />
-              <div class="file-info-container">
-                <div class="file-name" v-text="file.key.split('/').pop()"></div>
-                <div class="file-attr">
-                  <span v-text="new Date(file.uploaded).toLocaleString()"></span>
-                  <span v-text="formatSize(file.size)"></span>
+          <section class="file-panel" aria-label="文件列表" :aria-busy="loading">
+            <div class="file-toolbar">
+              <nav class="breadcrumbs" aria-label="目录导航">
+                <button @click="cwd = ''" :aria-current="!cwd ? 'page' : null">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m3 10 9-7 9 7v10h-6v-6H9v6H3V10Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+                  全部文件
+                </button>
+                <template v-for="(part, index) in cwd.split('/').filter(Boolean)" :key="index">
+                  <span class="breadcrumb-divider" aria-hidden="true">/</span>
+                  <button @click="cwd = cwd.split('/').filter(Boolean).slice(0, index + 1).join('/') + '/'" :aria-current="index === cwd.split('/').filter(Boolean).length - 1 ? 'page' : null">{{ part }}</button>
+                </template>
+              </nav>
+              <div class="toolbar-actions">
+                <button class="text-button new-folder-button" @click="createFolder">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3V7Zm9 4v5m-2.5-2.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span>新建文件夹</span>
+                </button>
+                <button class="icon-button" @click="fetchFiles" :disabled="loading" aria-label="刷新文件列表" title="刷新文件列表">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" :class="{ spinning: loading }"><path d="M20 10a8 8 0 0 0-14-4L3 9m0-5v5h5M4 14a8 8 0 0 0 14 4l3-3m0 5v-5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="menu-button">
+                  <button class="icon-button" @click="showMenu = !showMenu" aria-label="排序与文件操作" title="排序与文件操作" :aria-expanded="showMenu">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h11M4 18h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  </button>
+                  <Menu v-model="showMenu" :items="[{ text: '按照名称排序A-Z' }, { text: '按照大小递增排序' }, { text: '按照大小递减排序' }, { text: '全选/取消全选' }, { text: '粘贴文件到网盘' }]" @click="onMenuClick" />
                 </div>
               </div>
-              <div style="margin-right: 10px;margin-left: auto;" @click.stop="
-                showContextMenu = true;
-                focusedItem = file;
-                ">
-                <svg t="1741761103305" class="icon" viewBox="0 0 1024 1024" version="1.1"
-                  xmlns="http://www.w3.org/2000/svg" p-id="6484" width="30" height="30">
-                  <path
-                    d="M341.333333 533.333333a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333334a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128v-149.333334a128 128 0 0 1 128-128h149.333334z m-469.333334 64H192a64 64 0 0 0-63.893333 60.245334L128 661.333333v149.333334a64 64 0 0 0 60.245333 63.893333L192 874.666667h149.333333a64 64 0 0 0 63.893334-60.245334L405.333333 810.666667v-149.333334a64 64 0 0 0-60.245333-63.893333L341.333333 597.333333z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245334L597.333333 661.333333v149.333334a64 64 0 0 0 60.245334 63.893333L661.333333 874.666667h149.333334a64 64 0 0 0 63.893333-60.245334L874.666667 810.666667v-149.333334a64 64 0 0 0-60.245334-63.893333L810.666667 597.333333zM341.333333 64a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128H192a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333333z m469.333334 0a128 128 0 0 1 128 128v149.333333a128 128 0 0 1-128 128h-149.333334a128 128 0 0 1-128-128V192a128 128 0 0 1 128-128h149.333334zM341.333333 128H192a64 64 0 0 0-63.893333 60.245333L128 192v149.333333a64 64 0 0 0 60.245333 63.893334L192 405.333333h149.333333a64 64 0 0 0 63.893334-60.245333L405.333333 341.333333V192a64 64 0 0 0-60.245333-63.893333L341.333333 128z m469.333334 0h-149.333334a64 64 0 0 0-63.893333 60.245333L597.333333 192v149.333333a64 64 0 0 0 60.245334 63.893334L661.333333 405.333333h149.333334a64 64 0 0 0 63.893333-60.245333L874.666667 341.333333V192a64 64 0 0 0-60.245334-63.893333L810.666667 128z"
-                    fill="#2c2c2c" p-id="6485"></path>
-                </svg>
-              </div>
             </div>
-          </li>
-        </ul>
+
+            <div v-if="loadError" class="list-state error-state" role="alert">
+              <span class="state-icon"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="17" stroke="currentColor" stroke-width="2"/><path d="M24 15v11m0 7v.1" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></span>
+              <h2>文件暂时无法加载</h2>
+              <p>{{ loadError }}</p>
+              <button class="secondary-button" @click="fetchFiles">重新加载</button>
+            </div>
+            <template v-else>
+              <div v-if="loading || filteredFolders.length || filteredFiles.length" class="list-header">
+                <input type="checkbox" class="custom-checkbox" :checked="isAllSelected" @change="toggleSelectAll" aria-label="选择当前目录所有项目" :disabled="loading" />
+                <span>文件名称</span><span class="column-date">修改时间</span><span class="column-size">大小</span><span class="column-actions"></span>
+              </div>
+              <div v-if="loading" class="skeleton-list" role="status" aria-live="polite">
+                <span class="visually-hidden">正在加载文件</span>
+                <div v-for="n in 5" :key="n" class="skeleton-row"><span class="skeleton-icon"></span><span class="skeleton-name"></span><span class="skeleton-meta"></span></div>
+              </div>
+              <ul v-else-if="filteredFolders.length || filteredFiles.length" class="file-list">
+                <li v-for="folder in filteredFolders" :key="folder" :class="{ selected: selectedItems.includes(folder + '_$folder$') }">
+                  <div class="file-item" tabindex="0" role="button" @click="cwd = folder" @keydown.enter="cwd = folder" @keydown.space.prevent="cwd = folder" @contextmenu.prevent="focusedItem = folder; showContextMenu = true" :aria-label="'打开文件夹 ' + folder.split('/').filter(Boolean).pop()">
+                    <div class="checkbox-wrapper" @click.stop @keydown.stop><input type="checkbox" :value="folder + '_$folder$'" v-model="selectedItems" class="custom-checkbox" :aria-label="'选择文件夹 ' + folder.split('/').filter(Boolean).pop()" /></div>
+                    <div class="file-name-cell"><span class="file-icon folder-icon"><svg viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M4 11a3 3 0 0 1 3-3h7l3 3h12a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V11Z" fill="#F7C758"/><path d="M4 16a3 3 0 0 1 3-3h22a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V16Z" fill="#FFD977"/><path d="M9 20h8" stroke="#E5B246" stroke-width="2" stroke-linecap="round"/></svg></span><span class="file-info-container"><span class="file-name">{{ folder.split('/').filter(Boolean).pop() }}</span><span class="file-mobile-meta">文件夹</span></span></div>
+                    <span class="column-date file-secondary">—</span><span class="column-size file-secondary">文件夹</span>
+                    <button class="icon-button item-actions" @click.stop="focusedItem = folder; showContextMenu = true" @keydown.stop aria-label="文件夹操作"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+                  </div>
+                </li>
+                <li v-for="file in filteredFiles" :key="file.key" :class="{ selected: selectedItems.includes(file.key) }">
+                  <div class="file-item" tabindex="0" role="button" @click="preview(`/raw/${file.key.split('/').map(encodeURIComponent).join('/')}`)" @keydown.enter="preview(`/raw/${file.key.split('/').map(encodeURIComponent).join('/')}`)" @keydown.space.prevent="preview(`/raw/${file.key.split('/').map(encodeURIComponent).join('/')}`)" @contextmenu.prevent="focusedItem = file; showContextMenu = true" :aria-label="'打开文件 ' + file.key.split('/').pop()">
+                    <div class="checkbox-wrapper" @click.stop @keydown.stop><input type="checkbox" :value="file.key" v-model="selectedItems" class="custom-checkbox" :aria-label="'选择文件 ' + file.key.split('/').pop()" /></div>
+                    <div class="file-name-cell"><MimeIcon :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png` : null" :size="25" /><span class="file-info-container"><span class="file-name">{{ file.key.split('/').pop() }}</span><span class="file-mobile-meta">{{ formatSize(file.size) }}<span class="meta-dot">·</span>{{ new Date(file.uploaded).toLocaleDateString() }}</span></span></div>
+                    <span class="column-date file-secondary">{{ new Date(file.uploaded).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span><span class="column-size file-secondary">{{ formatSize(file.size) }}</span>
+                    <button class="icon-button item-actions" @click.stop="focusedItem = file; showContextMenu = true" @keydown.stop aria-label="文件操作"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+                  </div>
+                </li>
+              </ul>
+              <div v-else class="list-state empty-state">
+                <span class="state-icon"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M10 21a5 5 0 0 1 5-5h13l5 5h16a5 5 0 0 1 5 5v23H10V21Z" fill="#E9F0FF" stroke="#92AFE6" stroke-width="1.5"/><path d="M10 28h44M27 36h10m-5-5v10" stroke="#92AFE6" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+                <h2>{{ search ? '没有找到匹配的文件' : '这里还没有文件' }}</h2>
+                <p>{{ search ? '换个关键词试试，或清除搜索查看全部文件。' : '上传第一份文件，或新建文件夹开始整理。' }}</p>
+                <button v-if="search" class="secondary-button" @click="search = ''">清除搜索</button>
+                <button v-else class="secondary-button" @click="showUploadPopup = true">上传文件</button>
+              </div>
+              <div v-if="!loading && (filteredFolders.length || filteredFiles.length)" class="list-summary"><span>{{ search ? '找到' : '共' }} {{ filteredFolders.length + filteredFiles.length }} 项</span><span class="drop-hint">支持拖拽上传文件</span></div>
+            </template>
+          </section>
+
+          <div v-if="uploadProgress !== null" class="upload-status" role="status" aria-live="polite"><div><span class="spinner"></span><span>正在处理文件</span><strong>{{ Math.round(uploadProgress) }}%</strong></div><progress :value="uploadProgress" max="100" aria-label="文件处理进度"></progress></div>
+        </main>
       </div>
 
-      <div v-if="loading" style="margin: 20px 0; text-align: center">
-        <span style="font-size: 20px;">加载中...</span>
-      </div>
-      <div v-else-if="!filteredFiles.length && !filteredFolders.length" style="margin: 20px 0; text-align: center">
-        <span style="font-size: 20px;">没有文件</span>
-      </div>
-
-      <transition name="slide-up">
+      <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
+      <transition name="bulk">
         <div v-if="selectedItems.length > 0" class="bulk-action-bar">
-          <div class="bulk-info">
-            <span>已选择 {{ selectedItems.length }} 项</span>
-          </div>
-          <div class="bulk-buttons">
-            <button @click="toggleSelectAll" class="select-all-btn">
-              {{ isAllSelected ? '取消全选' : '全选' }}
-            </button>
-            <button @click="selectedItems = []" class="cancel-btn">取消</button>
-            <button @click="batchDelete" class="delete-btn">删除选中</button>
-          </div>
+          <span class="bulk-info">已选择 <strong>{{ selectedItems.length }}</strong> 项</span>
+          <div class="bulk-buttons"><button @click="toggleSelectAll">{{ isAllSelected ? '取消全选' : '全选' }}</button><button @click="selectedItems = []">取消</button><button @click="batchDelete" class="delete-btn">删除选中</button></div>
         </div>
       </transition>
-
-      <Dialog v-model="showContextMenu">
-        <div
-          style="height: 50px;display: flex; justify-content: center; align-items: center; padding:10px; background: #ddd; margin: 0 0 10px 0; border-radius: 8px;">
-          <div v-text="focusedItem.key || focusedItem" class="contextmenu-filename" @click.stop.prevent
-            style="height:20px;width: 100%; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
-        </div>
-        <ul v-if="typeof focusedItem === 'string'" class="contextmenu-list">
-          <li>
-            <button @click="copyLink(`/?p=${encodeURIComponent(focusedItem)}`)">
-              <span>复制链接</span>
-            </button>
-          </li>
-          <li>
-            <button @click="moveFile(focusedItem + '_$folder$')">
-              <span>移动</span>
-            </button>
-          </li>
-          <li>
-            <button style="color: red" @click="removeFile(focusedItem + '_$folder$')">
-              <span>删除</span>
-            </button>
-          </li>
-        </ul>
-        <ul v-else class="contextmenu-list">
-          <li>
-            <button @click="renameFile(focusedItem.key)">
-              <span>重命名</span>
-            </button>
-          </li>
-          <li>
-            <a :href="`/raw/${focusedItem.key}`" target="_blank" download>
-              <span>下载</span>
-            </a>
-          </li>
-          <li>
-            <button @click="clipboard = focusedItem.key">
-              <span>复制</span>
-            </button>
-          </li>
-          <li>
-            <button @click="moveFile(focusedItem.key)">
-              <span>移动</span>
-            </button>
-          </li>
-          <li>
-            <button @click="copyLink(`/raw/${focusedItem.key}`)">
-              <span>复制链接</span>
-            </button>
-          </li>
-          <li>
-            <button style="color: red" @click="removeFile(focusedItem.key)">
-              <span>删除</span>
-            </button>
-          </li>
-        </ul>
+      <Dialog v-if="focusedItem !== null" v-model="showContextMenu">
+        <div class="contextmenu-heading"><span class="contextmenu-filename">{{ typeof focusedItem === 'string' ? focusedItem : focusedItem.key }}</span><button class="icon-button" @click.stop="showContextMenu = false" aria-label="关闭文件操作"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+        <ul v-if="typeof focusedItem === 'string'" class="contextmenu-list"><li><button @click="copyLink(`/?p=${encodeURIComponent(focusedItem)}`)">复制链接</button></li><li><button @click="moveFile(focusedItem + '_$folder$')">移动</button></li><li><button class="danger-text" @click="removeFile(focusedItem + '_$folder$')">删除</button></li></ul>
+        <ul v-else class="contextmenu-list"><li><button @click="renameFile(focusedItem.key)">重命名</button></li><li><a :href="`/raw/${focusedItem.key.split('/').map(encodeURIComponent).join('/')}`" target="_blank" rel="noopener" download>下载</a></li><li><button @click="clipboard = focusedItem.key">复制</button></li><li><button @click="moveFile(focusedItem.key)">移动</button></li><li><button @click="copyLink(`/raw/${focusedItem.key.split('/').map(encodeURIComponent).join('/')}`)">复制链接</button></li><li><button class="danger-text" @click="removeFile(focusedItem.key)">删除</button></li></ul>
       </Dialog>
-      <div style="flex:1"></div>
-      <Footer />
     </div>
   </div>
 </template>
 
 <script>
+import axios from "axios";
 import {
   generateThumbnail,
   blobDigest,
   multipartUpload,
   SIZE_LIMIT,
-} from "/assets/main.mjs";
+} from "./main.mjs";
 import Dialog from "./Dialog.vue";
 import Menu from "./Menu.vue";
 import MimeIcon from "./MimeIcon.vue";
 import UploadPopup from "./UploadPopup.vue";
-import Footer from "./Footer.vue";
+
+function encodePath(path) {
+  return path.split("/").map((part) => encodeURIComponent(part)).join("/");
+}
+
+function errorMessage(error, fallback) {
+  return error?.response?.data?.error || error?.message || fallback;
+}
 
 export default {
   data: () => ({
-    isAuthenticated: false, // 认证状态
-    passwordInput: "",      // 密码输入框
+    isAuthenticated: false,
+    requireLogin: false,
+    sessionLoading: true,
+    usernameInput: "",
+    passwordInput: "",
+    authenticatedUser: "",
+    loginError: "",
+    loginPending: false,
+    loadError: "",
     cwd: new URL(window.location).searchParams.get("p") || "",
     files: [],
     folders: [],
@@ -271,8 +215,8 @@ export default {
     showUploadPopup: false,
     uploadProgress: null,
     uploadQueue: [],
-    backgroundImageUrl: "/assets/bg-light.webp",
-    selectedItems: [], // 存储选中的文件/文件夹 Key
+    selectedItems: [],
+    fileRequestId: 0,
   }),
 
   computed: {
@@ -297,29 +241,96 @@ export default {
     // 判断是否全选
     isAllSelected() {
       const totalCount = this.filteredFolders.length + this.filteredFiles.length;
-      return totalCount > 0 && this.selectedItems.length === totalCount;
+      return totalCount > 0 && this.filteredFolders.every((folder) => this.selectedItems.includes(`${folder}_$folder$`))
+        && this.filteredFiles.every((file) => this.selectedItems.includes(file.key));
     },
   },
 
   methods: {
-    submitPassword() {
-      if (this.passwordInput === "hejianwei") {
-        this.isAuthenticated = true;
-        localStorage.setItem("flaredrive_auth", "hejianwei"); // 记住登录状态
-        this.fetchFiles(); // 登录成功后立即加载文件
-      } else {
-        alert("密码错误！");
-        this.passwordInput = "";
+    async restoreSession() {
+      this.sessionLoading = true;
+      try {
+        const response = await fetch("/api/session", { credentials: "same-origin" });
+        const session = await response.json();
+        if (!response.ok) throw new Error(session.error || "无法确认登录状态。");
+        this.isAuthenticated = session.authenticated === true;
+        this.requireLogin = false;
+        this.authenticatedUser = session.username || "";
+        this.loadError = "";
+        if (this.isAuthenticated) await this.fetchFiles();
+      } catch (error) {
+        this.isAuthenticated = false;
+        this.authenticatedUser = "";
+        this.loadError = errorMessage(error, "无法连接网盘，请检查网络或服务配置。");
+      } finally {
+        this.sessionLoading = false;
       }
     },
 
-    copyLink(link) {
+    async submitPassword() {
+      if (this.loginPending) return;
+      this.loginPending = true;
+      this.loginError = "";
+      this.loadError = "";
+      try {
+        const response = await fetch("/api/session", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: this.usernameInput, password: this.passwordInput }),
+        });
+        const session = await response.json();
+        if (!response.ok) throw new Error(session.error || "登录失败，请检查账号和密码。");
+        this.isAuthenticated = session.authenticated === true;
+        this.requireLogin = false;
+        this.authenticatedUser = session.username || "";
+        this.passwordInput = "";
+        this.loadError = "";
+        if (this.isAuthenticated) await this.fetchFiles();
+      } catch (error) {
+        this.loginError = errorMessage(error, "登录失败，请检查网络后重试。");
+      } finally {
+        this.loginPending = false;
+      }
+    },
+
+    async logout() {
+      this.loginError = "";
+      this.loadError = "";
+      if (!this.authenticatedUser) {
+        this.requireLogin = true;
+        this.files = [];
+        this.folders = [];
+        return;
+      }
+      try {
+        const response = await fetch("/api/session", { method: "DELETE", credentials: "same-origin" });
+        if (!response.ok) throw new Error("退出登录失败，请重试。");
+        const session = await response.json();
+        this.isAuthenticated = session.authenticated === true;
+        this.requireLogin = true;
+        this.authenticatedUser = session.username || "";
+        this.files = [];
+        this.folders = [];
+        this.selectedItems = [];
+        if (this.isAuthenticated) await this.fetchFiles();
+      } catch (error) {
+        this.loadError = errorMessage(error, "退出登录失败，请重试。");
+      }
+    },
+
+    async copyLink(link) {
       const url = new URL(link, window.location.origin);
-      navigator.clipboard.writeText(url.toString());
+      try {
+        await navigator.clipboard.writeText(url.toString());
+        this.showContextMenu = false;
+      } catch {
+        window.prompt("复制此链接：", url.toString());
+      }
     },
 
     async copyPaste(source, target) {
-      const uploadUrl = `/api/write/items/${target}`;
+      const uploadUrl = `/api/write/items/${encodePath(target)}`;
       await axios.put(uploadUrl, "", {
         headers: { "x-amz-copy-source": encodeURIComponent(source) },
       });
@@ -329,428 +340,324 @@ export default {
       try {
         const folderName = window.prompt("请输入文件夹名称");
         if (!folderName) return;
+        if (folderName.includes("/") || folderName === "." || folderName === "..") {
+          alert("文件夹名称不能包含斜杠。");
+          return;
+        }
         this.showUploadPopup = false;
-        const uploadUrl = `/api/write/items/${this.cwd}${folderName}/_$folder$`;
+        const uploadUrl = `/api/write/items/${encodePath(`${this.cwd}${folderName}/_$folder$`)}`;
         await axios.put(uploadUrl, "");
-        this.fetchFiles();
+        await this.fetchFiles();
       } catch (error) {
-        fetch("/api/write/")
-          .then((value) => {
-            if (value.redirected) window.location.href = value.url;
-          })
-          .catch(() => { });
-        console.log(`Create folder failed`);
+        this.loadError = errorMessage(error, "创建文件夹失败，请检查写入权限后重试。");
       }
     },
 
-    fetchFiles() {
-      // 只有认证通过才加载文件
+    async fetchFiles() {
       if (!this.isAuthenticated) return;
 
+      const requestId = ++this.fileRequestId;
+      const path = this.cwd.replace(/^\/+|\/+$/g, "");
       this.files = [];
       this.folders = [];
       this.loading = true;
-      fetch(`/api/children/${this.cwd}`)
-        .then((res) => {
-          if (!res.ok) {
-            this.loading = false;
-            return null;
-          }
-          return res.json();
-        })
-        .then((files) => {
-          if (!files) return;
-          this.files = files.value;
-          if (this.order) {
-            this.files.sort((a, b) => {
-              if (this.order === "size") {
-                return b.size - a.size;
-              }
-            });
-          }
-          this.folders = files.folders;
-          this.loading = false;
+      this.loadError = "";
+
+      try {
+        const files = [];
+        const folders = new Set();
+        let cursor = null;
+        do {
+          const url = new URL(`/api/children/${encodePath(path)}`, window.location.origin);
+          if (cursor) url.searchParams.set("cursor", cursor);
+          const response = await fetch(url, { credentials: "same-origin" });
+          const page = await response.json();
+          if (!response.ok) throw new Error(page.error || "文件列表加载失败。");
+          files.push(...(page.value || []));
+          for (const folder of page.folders || []) folders.add(folder);
+          cursor = page.cursor || page.marker || null;
+        } while (cursor && requestId === this.fileRequestId);
+
+        if (requestId !== this.fileRequestId) return;
+        this.files = files;
+        this.folders = [...folders];
+        this.files.sort((a, b) => {
+          if (this.order === "大小↑") return a.size - b.size;
+          if (this.order === "大小↓") return b.size - a.size;
+          return a.key.localeCompare(b.key);
         });
+      } catch (error) {
+        if (requestId === this.fileRequestId) {
+          this.loadError = errorMessage(error, "文件列表加载失败，请重试。");
+        }
+      } finally {
+        if (requestId === this.fileRequestId) this.loading = false;
+      }
     },
 
     formatSize(size) {
       const units = ["B", "KB", "MB", "GB", "TB"];
-      let i = 0;
-      while (size >= 1024) {
+      let index = 0;
+      while (size >= 1024 && index < units.length - 1) {
         size /= 1024;
-        i++;
+        index++;
       }
-      return `${size.toFixed(1)} ${units[i]}`;
+      return `${size.toFixed(1)} ${units[index]}`;
     },
 
-    onDrop(ev) {
-      let files;
-      if (ev.dataTransfer.items) {
-        files = [...ev.dataTransfer.items]
-          .filter((item) => item.kind === "file")
-          .map((item) => item.getAsFile());
-      } else files = ev.dataTransfer.files;
+    onDrop(event) {
+      const files = event.dataTransfer.items
+        ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()).filter(Boolean)
+        : [...event.dataTransfer.files];
       this.uploadFiles(files);
     },
 
     toggleSelectAll() {
-      const totalItems = this.filteredFolders.length + this.filteredFiles.length;
-      const isAllSelected = totalItems > 0 && this.selectedItems.length === totalItems;
-
-      if (isAllSelected) {
-        // 如果已全选，则取消所有
-        this.selectedItems = [];
+      const visibleFolders = this.filteredFolders.map((folder) => `${folder}_$folder$`);
+      const visibleFiles = this.filteredFiles.map((file) => file.key);
+      if (this.isAllSelected) {
+        const visible = new Set([...visibleFolders, ...visibleFiles]);
+        this.selectedItems = this.selectedItems.filter((item) => !visible.has(item));
       } else {
-        // 否则全选（注意：文件夹需要加上 _$folder$ 后缀）
-        const folders = this.filteredFolders.map(f => f + '_$folder$');
-        const files = this.filteredFiles.map(f => f.key);
-        this.selectedItems = [...folders, ...files];
+        this.selectedItems = [...new Set([...this.selectedItems, ...visibleFolders, ...visibleFiles])];
       }
     },
 
     onMenuClick(text) {
       switch (text) {
-        case "按照名称排序A-Z":
-          this.order = null;
-          break;
-        case "按照大小递增排序":
-          this.order = "大小↑";
-          break;
-        case "按照大小递减排序":
-          this.order = "大小↓";
-          break;
-        case "全选/取消全选":
-          this.toggleSelectAll();
-          return;
-        case "粘贴文件到网盘":
-          return this.pasteFile();
+        case "按照名称排序A-Z": this.order = null; break;
+        case "按照大小递增排序": this.order = "大小↑"; break;
+        case "按照大小递减排序": this.order = "大小↓"; break;
+        case "全选/取消全选": this.toggleSelectAll(); return;
+        case "粘贴文件到网盘": this.pasteFile(); return;
       }
-      this.files.sort((a, b) => {
-        if (this.order === "大小↑") {
-          return a.size - b.size;
-        } else if (this.order === "大小↓") {
-          return b.size - a.size;
-        } else {
-          return a.key.localeCompare(b.key);
-        }
-      });
+      this.files.sort((a, b) => this.order === "大小↑" ? a.size - b.size
+        : this.order === "大小↓" ? b.size - a.size : a.key.localeCompare(b.key));
     },
 
     onUploadClicked(fileElement) {
       if (!fileElement.value) return;
       this.uploadFiles(fileElement.files);
       this.showUploadPopup = false;
-      fileElement.value = null;
+      fileElement.value = "";
     },
 
     preview(filePath) {
-      window.open(filePath);
+      window.open(filePath, "_blank", "noopener,noreferrer");
     },
 
     async pasteFile() {
       if (!this.clipboard) return;
-      let newName = window.prompt("Rename to:");
+      let newName = window.prompt("另存为：");
       if (newName === null) return;
       if (newName === "") newName = this.clipboard.split("/").pop();
-      await this.copyPaste(this.clipboard, `${this.cwd}${newName}`);
-      this.fetchFiles();
+      try {
+        await this.copyPaste(this.clipboard, `${this.cwd}${newName}`);
+        await this.fetchFiles();
+      } catch (error) {
+        this.loadError = errorMessage(error, "复制文件失败，请检查写入权限后重试。");
+      }
     },
 
     async processUploadQueue() {
       if (!this.uploadQueue.length) {
-        this.fetchFiles();
+        await this.fetchFiles();
         this.uploadProgress = null;
         return;
       }
 
-      /** @type File **/
-      const { basedir, file } = this.uploadQueue.pop(0);
+      const { basedir, file } = this.uploadQueue.shift();
       let thumbnailDigest = null;
-
       if (file.type.startsWith("image/") || file.type === "video/mp4") {
         try {
           const thumbnailBlob = await generateThumbnail(file);
           const digestHex = await blobDigest(thumbnailBlob);
-
-          const thumbnailUploadUrl = `/api/write/items/_$flaredrive$/thumbnails/${digestHex}.png`;
-          try {
-            await axios.put(thumbnailUploadUrl, thumbnailBlob);
-            thumbnailDigest = digestHex;
-          } catch (error) {
-            fetch("/api/write/")
-              .then((value) => {
-                if (value.redirected) window.location.href = value.url;
-              })
-              .catch(() => { });
-            console.log(`Upload ${digestHex}.png failed`);
-          }
+          await axios.put(`/api/write/items/${encodePath(`_$flaredrive$/thumbnails/${digestHex}.png`)}`, thumbnailBlob);
+          thumbnailDigest = digestHex;
         } catch (error) {
-          console.log(`Generate thumbnail failed`);
+          console.warn("Thumbnail creation failed", error);
         }
       }
 
       try {
-        const uploadUrl = `/api/write/items/${basedir}${file.name}`;
-        const headers = {};
+        const key = `${basedir}${file.name}`;
+        const headers = thumbnailDigest ? { "fd-thumbnail": thumbnailDigest } : {};
         const onUploadProgress = (progressEvent) => {
-          var percentCompleted =
-            (progressEvent.loaded * 100) / progressEvent.total;
-          this.uploadProgress = percentCompleted;
+          if (progressEvent.total) this.uploadProgress = (progressEvent.loaded * 100) / progressEvent.total;
         };
-        if (thumbnailDigest) headers["fd-thumbnail"] = thumbnailDigest;
         if (file.size >= SIZE_LIMIT) {
-          await multipartUpload(`${basedir}${file.name}`, file, {
-            headers,
-            onUploadProgress,
-          });
+          await multipartUpload(key, file, { headers, onUploadProgress });
         } else {
-          await axios.put(uploadUrl, file, { headers, onUploadProgress });
+          await axios.put(`/api/write/items/${encodePath(key)}`, file, { headers, onUploadProgress });
         }
+        this.loadError = "";
       } catch (error) {
-        fetch("/api/write/")
-          .then((value) => {
-            if (value.redirected) window.location.href = value.url;
-          })
-          .catch(() => { });
-        console.log(`Upload ${file.name} failed`, error);
+        this.loadError = errorMessage(error, `上传“${file.name}”失败，请检查写入权限后重试。`);
       }
-      setTimeout(this.processUploadQueue);
+      setTimeout(() => this.processUploadQueue(), 0);
     },
 
     async removeFile(key) {
       if (!window.confirm(`确定要删除 ${key} 吗？`)) return;
-      await axios.delete(`/api/write/items/${key}`);
-      this.fetchFiles();
+      try {
+        const keys = key.endsWith("_$folder$")
+          ? [...(await this.getAllItems(key.slice(0, -9))).map((item) => item.key), key]
+          : [key];
+        for (const itemKey of [...new Set(keys)]) {
+          await axios.delete(`/api/write/items/${encodePath(itemKey)}`);
+        }
+        this.showContextMenu = false;
+        await this.fetchFiles();
+      } catch (error) {
+        this.loadError = errorMessage(error, "删除失败，请检查写入权限后重试。");
+      }
     },
 
-    // 批量删除
     async batchDelete() {
-      const count = this.selectedItems.length;
-      if (count === 0) return;
-
-      if (!window.confirm(`确定要永久删除这 ${count} 个项目吗？`)) return;
-
-      this.loading = true; // 显示加载状态
-      
+      const selected = [...this.selectedItems];
+      if (!selected.length || !window.confirm(`确定要永久删除这 ${selected.length} 个项目吗？`)) return;
+      this.loading = true;
       try {
-        // 并发执行删除请求
-        const deletePromises = this.selectedItems.map(key => 
-          axios.delete(`/api/write/items/${key}`)
-        );
-
-        await Promise.all(deletePromises);
-        
-        // 删除成功后
-        this.selectedItems = []; // 清空选中
-        this.fetchFiles();       // 刷新列表
+        const keys = new Set();
+        for (const key of selected) {
+          if (key.endsWith("_$folder$")) {
+            for (const item of await this.getAllItems(key.slice(0, -9))) keys.add(item.key);
+          }
+          keys.add(key);
+        }
+        for (const key of keys) await axios.delete(`/api/write/items/${encodePath(key)}`);
+        this.selectedItems = [];
+        await this.fetchFiles();
       } catch (error) {
-        console.error("Batch delete failed", error);
-        alert("部分文件删除失败，请重试");
-        this.fetchFiles();
+        this.loadError = errorMessage(error, "部分项目删除失败，请重试。");
       } finally {
         this.loading = false;
       }
     },
 
     async renameFile(key) {
-      const newName = window.prompt("重命名为:");
-      if (!newName) return;
-      await this.copyPaste(key, `${this.cwd}${newName}`);
-      await axios.delete(`/api/write/items/${key}`);
-      this.fetchFiles();
+      const newName = window.prompt("重命名为：");
+      if (!newName || newName.includes("/")) return;
+      if (newName === key.split("/").pop()) {
+        this.showContextMenu = false;
+        return;
+      }
+      try {
+        await this.copyPaste(key, `${this.cwd}${newName}`);
+        await axios.delete(`/api/write/items/${encodePath(key)}`);
+        this.showContextMenu = false;
+        await this.fetchFiles();
+      } catch (error) {
+        this.loadError = errorMessage(error, "重命名失败，请重试。");
+      }
     },
 
     async moveFile(key) {
-      // 获取当前的目录结构
-      const currentPath = this.cwd; // 当前所在目录
-      const allFolders = [...this.folders]; // 所有可用目录
-
-      // 如果不在根目录，添加返回上级目录选项
-      if (currentPath !== '') {
-        const parentPath = currentPath.replace(/[^\/]+\/$/, '');
-        if (!allFolders.includes(parentPath) && parentPath !== '') {
-          allFolders.unshift(parentPath);
-        }
-      }
-
-      // 添加根目录选项
-      if (!allFolders.includes('')) {
-        allFolders.unshift('');
-      }
-
-      // 构建选择列表
-      const folderOptions = allFolders.map(folder => {
-        const displayName = folder === '' ? '根目录' :
-          folder === currentPath ? '当前目录' :
-            folder.replace(/.*\/(?!$)|\//g, '') + '/';
-        return {
-          display: displayName,
-          value: folder
-        };
-      });
-
-      // 创建选择提示
-      const options = folderOptions.map((opt, index) =>
-        `${index + 1}. ${opt.display}`
-      ).join('\n');
-
-      const promptText = `请选择目标目录(输入数字):\n${options}\n`;
-      const selection = window.prompt(promptText);
-
+      const folders = [...new Set(["", ...this.folders])];
+      const options = folders.map((folder, index) => `${index + 1}. ${folder || "根目录"}`).join("\n");
+      const selection = window.prompt(`请选择目标目录（输入序号）：\n${options}`);
       if (!selection) return;
-
-      const selectedIndex = parseInt(selection) - 1;
-      if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= folderOptions.length) {
-        alert('无效的选择');
+      const index = Number.parseInt(selection, 10) - 1;
+      if (!Number.isInteger(index) || index < 0 || index >= folders.length) {
+        alert("无效的选择。");
         return;
       }
 
-      const targetPath = folderOptions[selectedIndex].value;
-
-      // 获取文件名
-      const fileName = key.split('/').pop();
-      // 如果是文件夹,需要移除_$folder$后缀
-      const finalFileName = fileName.endsWith('_$folder$') ? fileName.slice(0, -9) : fileName;
-
-      // 修复：正确处理目标路径，避免双斜杠
-      const normalizedPath = targetPath === '' ? '' : (targetPath.endsWith('/') ? targetPath : targetPath + '/');
-
+      const target = folders[index];
+      const isFolder = key.endsWith("_$folder$");
+      const sourceBasePath = isFolder ? key.slice(0, -9) : "";
+      const sourcePrefix = isFolder ? `${sourceBasePath.replace(/\/+$/, "")}/` : "";
+      const fileName = isFolder
+        ? sourceBasePath.replace(/\/$/, "").split("/").pop()
+        : key.split("/").pop();
+      const folderName = fileName;
+      const normalizedTarget = target && !target.endsWith("/") ? `${target}/` : target;
+      const targetPath = `${normalizedTarget}${folderName}`;
+      if (targetPath === (isFolder ? sourceBasePath.replace(/\/$/, "") : key)) {
+        this.showContextMenu = false;
+        return;
+      }
+      if (isFolder && targetPath.startsWith(`${sourceBasePath.replace(/\/$/, "")}/`)) {
+        this.loadError = "不能将文件夹移动到自身或其子文件夹中。";
+        return;
+      }
       try {
-        // 如果是目录（以_$folder$结尾），则需要移动整个目录内容
-        if (key.endsWith('_$folder$')) {
-          // 获取源目录的基础路径（移除_$folder$后缀）
-          const sourceBasePath = key.slice(0, -9);
-          // 获取目标目录的基础路径，修复根目录的情况
-          const targetBasePath = normalizedPath + finalFileName + '/';
-
-          // 递归获取所有子文件和子目录
-          const allItems = await this.getAllItems(sourceBasePath);
-
-          // 显示进度提示
-          const totalItems = allItems.length;
-          let processedItems = 0;
-
-          // 移动所有项目
-          for (const item of allItems) {
-            const relativePath = item.key.substring(sourceBasePath.length);
-            const newPath = targetBasePath + relativePath;
-
-            try {
-              // 复制到新位置
-              await this.copyPaste(item.key, newPath);
-              // 删除原位置
-              await axios.delete(`/api/write/items/${item.key}`);
-
-              // 更新进度
-              processedItems++;
-              this.uploadProgress = (processedItems / totalItems) * 100;
-            } catch (error) {
-              console.error(`移动 ${item.key} 失败:`, error);
+        if (isFolder) {
+          const items = await this.getAllItems(sourcePrefix);
+          let processed = 0;
+          for (const item of items) {
+            const relativePath = item.key.substring(sourcePrefix.length);
+            const destinationKey = `${targetPath}/${relativePath}`;
+            if (item.isFolderMarker) {
+              await axios.put(`/api/write/items/${encodePath(destinationKey)}`, "");
+            } else {
+              await this.copyPaste(item.key, destinationKey);
             }
+            await axios.delete(`/api/write/items/${encodePath(item.key)}`);
+            processed++;
+            this.uploadProgress = items.length ? (processed / items.length) * 100 : 100;
           }
-
-          // 移动目录标记
-          const targetFolderPath = targetBasePath.slice(0, -1) + '_$folder$';
-          await this.copyPaste(key, targetFolderPath);
-          await axios.delete(`/api/write/items/${key}`);
-
-          // 清除进度
-          this.uploadProgress = null;
+          await axios.put(`/api/write/items/${encodePath(`${targetPath}/_$folder$`)}`, "");
+          await axios.delete(`/api/write/items/${encodePath(key)}`);
         } else {
-          // 单文件移动逻辑，修复根目录的情况
-          const targetFilePath = normalizedPath + finalFileName;
-          await this.copyPaste(key, targetFilePath);
-          await axios.delete(`/api/write/items/${key}`);
+          await this.copyPaste(key, targetPath);
+          await axios.delete(`/api/write/items/${encodePath(key)}`);
         }
-
-        // 刷新文件列表
-        this.fetchFiles();
+        this.showContextMenu = false;
+        await this.fetchFiles();
       } catch (error) {
-        console.error('移动失败:', error);
-        alert('移动失败,请检查目标路径是否正确');
+        this.loadError = errorMessage(error, "移动失败，请检查目标目录和写入权限。");
+      } finally {
+        this.uploadProgress = null;
       }
     },
 
-    // 递归获取目录下所有文件和子目录
     async getAllItems(prefix) {
       const items = [];
-      let marker = null;
-
+      let cursor = null;
       do {
-        const url = new URL(`/api/children/${prefix}`, window.location.origin);
-        if (marker) {
-          url.searchParams.set('marker', marker);
-        }
-
-        const response = await fetch(url);
+        const url = new URL(`/api/children/${encodePath(prefix)}`, window.location.origin);
+        if (cursor) url.searchParams.set("cursor", cursor);
+        const response = await fetch(url, { credentials: "same-origin" });
         const data = await response.json();
-
-        // 添加文件
-        items.push(...data.value);
-
-        // 处理子目录
-        for (const folder of data.folders) {
-          // 添加目录标记
-          items.push({
-            key: folder + '_$folder$',
-            size: 0,
-            uploaded: new Date().toISOString(),
-          });
-
-          // 递归获取子目录内容
-          const subItems = await this.getAllItems(folder);
-          items.push(...subItems);
+        if (!response.ok) throw new Error(data.error || "读取目录失败。");
+        items.push(...(data.value || []));
+        for (const folder of data.folders || []) {
+          items.push({ key: `${folder}_$folder$`, size: 0, uploaded: new Date().toISOString(), isFolderMarker: true });
+          items.push(...await this.getAllItems(folder));
         }
-
-        marker = data.marker;
-      } while (marker);
-
+        cursor = data.cursor || data.marker || null;
+      } while (cursor);
       return items;
     },
 
     uploadFiles(files) {
-      if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/";
-
-      const uploadTasks = Array.from(files).map((file) => ({
-        basedir: this.cwd,
-        file,
-      }));
-      this.uploadQueue.push(...uploadTasks);
-      setTimeout(() => this.processUploadQueue());
+      const basedir = this.cwd && !this.cwd.endsWith("/") ? `${this.cwd}/` : this.cwd;
+      this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir, file })));
+      if (this.uploadQueue.length === files.length) setTimeout(() => this.processUploadQueue(), 0);
     },
   },
 
   watch: {
-    cwd: {
-      handler() {
-        this.selectedItems = []; // 切换目录时清空选中状态
-        this.fetchFiles();
-        const url = new URL(window.location);
-        if ((url.searchParams.get("p") || "") !== this.cwd) {
-          this.cwd
-            ? url.searchParams.set("p", this.cwd)
-            : url.searchParams.delete("p");
-          window.history.pushState(null, "", url.toString());
-        }
-        document.title = this.cwd.replace(/.*\/(?!$)|\//g, "") === "/" 
-            ? "FlareDrive-R2 - 优雅的 Cloudflare R2 网盘文件库"
-            : `${this.cwd.replace(/.*\/(?!$)|\//g, "") || "/" } - 优雅的 Cloudflare R2 网盘文件库`;
-      },
-      immediate: true,
+    cwd() {
+      this.selectedItems = [];
+      this.search = "";
+      if (this.isAuthenticated) this.fetchFiles();
+      const url = new URL(window.location);
+      if ((url.searchParams.get("p") || "") !== this.cwd) {
+        this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p");
+        window.history.pushState(null, "", url.toString());
+      }
+      const currentFolder = this.cwd.split("/").filter(Boolean).pop();
+      document.title = currentFolder ? `${currentFolder} · FlareDrive 文件库` : "FlareDrive 文件库";
     },
   },
 
   created() {
-    // 检查缓存的认证状态
-    if (localStorage.getItem("flaredrive_auth") === "hejianwei") {
-      this.isAuthenticated = true;
-      this.fetchFiles();
-    }
-
-    window.addEventListener("popstate", (ev) => {
-      const searchParams = new URL(window.location).searchParams;
-      if (searchParams.get("p") !== this.cwd)
-        this.cwd = searchParams.get("p") || "";
+    this.restoreSession();
+    window.addEventListener("popstate", () => {
+      const path = new URL(window.location).searchParams.get("p") || "";
+      if (path !== this.cwd) this.cwd = path;
     });
   },
 
@@ -759,251 +666,6 @@ export default {
     Menu,
     MimeIcon,
     UploadPopup,
-    Footer,
   },
 };
 </script>
-
-<style>
-/* 登录界面样式 */
-.login-overlay {
-  display: flex;
-  height: 100vh;
-  justify-content: center;
-  align-items: center;
-  background-size: cover;
-  background-position: center;
-  /* 确保遮罩层覆盖一切 */
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 9999;
-}
-
-.login-box {
-  background: rgba(255, 255, 255, 0.9);
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 300px;
-  backdrop-filter: blur(10px);
-}
-
-.login-btn {
-  background: #007aff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  width: 100%;
-}
-
-.login-btn:hover {
-  background: #0056b3;
-}
-
-/* 修复后的样式 */
-.main {
-  display: flex;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  overflow-y: auto;
-  flex-direction: column;
-}
-
-.app-bar {
-  z-index: 2;
-  position: sticky;
-  top: 0;
-  padding: 8px;
-  background-color: white;
-  display: flex;
-  align-items: center; /* 确保垂直居中 */
-}
-
-@media (max-width: 400px) {
-  .menu-button {
-    margin: 0;
-    padding: 0;
-  }
-
-  button.circle {
-    padding: 0 8px;
-  }
-  .menu-button-text {
-    display: none !important;
-  }
-}
-
-@media (max-width: 340px) {
-  .app-title-container {
-    display: none !important;
-  }
-}
-
-.menu-button {
-  display: flex;
-  position: relative;
-  margin-left: 10px;
-  padding: 0 10px;
-}
-
-.file-list-container {
-  margin: 20px auto;
-  padding: 10px;
-  width: 95%; /* 修复“半屏”问题 */
-  max-width: 1200px; /* 限制最大宽度 */
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: width 0.3s ease;
-}
-
-@media (max-width: 1280px) {
-  .file-list-container {
-    width: 95%; /* 确保在中小屏幕上占满 */
-    padding: 10px;
-  }
-}
-
-.menu-button>button {
-  transition: background-color 0.2s ease;
-}
-
-.menu-button>button:hover {
-  background-color: rgb(212, 212, 212);
-}
-
-.menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-}
-
-/* 上传按钮样式补充 */
-.upload-button {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: white; /* 修复按钮背景 */
-  border: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 100;
-}
-
-/* --- 复选框和批量操作栏样式 --- */
-
-/* 1. 复选框容器：默认隐藏（透明），有过渡效果 */
-.checkbox-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px 0 5px;
-  cursor: pointer;
-  opacity: 0; /* 默认不可见 */
-  transition: opacity 0.2s ease;
-}
-
-/* 2. 鼠标悬停文件行时，显示复选框 */
-.file-item:hover .checkbox-wrapper {
-  opacity: 1;
-}
-
-/* 3. 如果复选框被勾选，保持显示 */
-.checkbox-wrapper:has(input:checked) {
-  opacity: 1;
-}
-
-/* 自定义复选框外观 */
-.custom-checkbox {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: #007aff;
-  border-radius: 4px;
-}
-
-/* 底部批量操作栏 */
-.bulk-action-bar {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90%;
-  max-width: 600px;
-  background-color: rgba(30, 30, 30, 0.85);
-  backdrop-filter: blur(12px);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 50px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-  z-index: 1000;
-}
-
-.bulk-info {
-  font-weight: bold;
-  font-size: 16px;
-  padding-left: 10px;
-}
-
-.bulk-buttons {
-  display: flex;
-  gap: 8px; /* 按钮间距 */
-}
-
-.bulk-buttons button {
-  border: none;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-/* 全选按钮 */
-.select-all-btn {
-  background-color: #007aff;
-  color: white;
-}
-
-.cancel-btn {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.delete-btn {
-  background-color: #ff3b30;
-  color: white;
-}
-
-.bulk-buttons button:hover {
-  opacity: 0.8;
-}
-
-/* 进入/退出动画 */
-.slide-up-enter-active, .slide-up-leave-active {
-  transition: all 0.3s ease;
-}
-.slide-up-enter, .slide-up-leave-to {
-  transform: translate(-50%, 150%);
-  opacity: 0;
-}
-</style>

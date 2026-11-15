@@ -1,148 +1,112 @@
-import { notFound, parseBucketPath } from "@/utils/bucket";
-import {get_auth_status} from "@/utils/auth";
+import { can_access_path, get_auth_status } from "@/utils/auth";
+import { jsonResponse, missingBucket, parseBucketPath } from "@/utils/bucket";
 
 export async function onRequestPostCreateMultipart(context) {
   const [bucket, path] = parseBucketPath(context);
-  if (!bucket) return notFound();
+  if (!bucket) return missingBucket();
 
   const request: Request = context.request;
-
   const customMetadata: Record<string, string> = {};
-  if (request.headers.has("fd-thumbnail"))
-    customMetadata.thumbnail = request.headers.get("fd-thumbnail");
+  const thumbnail = request.headers.get("fd-thumbnail");
+  if (thumbnail) customMetadata.thumbnail = thumbnail;
 
   const multipartUpload = await bucket.createMultipartUpload(path, {
-    httpMetadata: {
-      contentType: request.headers.get("content-type"),
-    },
+    httpMetadata: { contentType: request.headers.get("content-type") || undefined },
     customMetadata,
   });
 
-  return new Response(
-    JSON.stringify({
-      key: multipartUpload.key,
-      uploadId: multipartUpload.uploadId,
-    })
-  );
+  return jsonResponse({ key: multipartUpload.key, uploadId: multipartUpload.uploadId });
 }
 
 export async function onRequestPostCompleteMultipart(context) {
   const [bucket, path] = parseBucketPath(context);
-  if (!bucket) return notFound();
+  if (!bucket) return missingBucket();
 
-  const request: Request = context.request;
-  const url = new URL(request.url);
-  const uploadId = new URLSearchParams(url.search).get("uploadId");
-  const multipartUpload = await bucket.resumeMultipartUpload(path, uploadId);
-
-  const completeBody: { parts: Array<any> } = await request.json();
+  const url = new URL(context.request.url);
+  const uploadId = url.searchParams.get("uploadId");
+  if (!uploadId) return jsonResponse({ error: "缺少分片上传标识。" }, 400);
+  const multipartUpload = bucket.resumeMultipartUpload(path, uploadId);
+  const completeBody: { parts?: R2UploadedPart[] } = await context.request.json();
+  if (!Array.isArray(completeBody.parts)) return jsonResponse({ error: "分片信息无效。" }, 400);
 
   try {
     const object = await multipartUpload.complete(completeBody.parts);
-    return new Response(null, {
-      headers: { etag: object.httpEtag },
-    });
-  } catch (error: any) {
-    return new Response(error.message, { status: 400 });
+    return new Response(null, { headers: { etag: object.httpEtag } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "分片合并失败。";
+    return jsonResponse({ error: message }, 400);
   }
 }
 
 export async function onRequestPost(context) {
+  if (!(await get_auth_status(context))) {
+    return jsonResponse({ error: "登录已失效或没有此目录的写入权限。" }, 401);
+  }
+
   const url = new URL(context.request.url);
-  const searchParams = new URLSearchParams(url.search);
-
-  if (searchParams.has("uploads")) {
-    return onRequestPostCreateMultipart(context);
-  }
-
-  if (searchParams.has("uploadId")) {
-    return onRequestPostCompleteMultipart(context);
-  }
-
-  return new Response("Method not allowed", { status: 405 });
+  if (url.searchParams.has("uploads")) return onRequestPostCreateMultipart(context);
+  if (url.searchParams.has("uploadId")) return onRequestPostCompleteMultipart(context);
+  return jsonResponse({ error: "不支持此操作。" }, 405, { Allow: "POST" });
 }
 
 export async function onRequestPutMultipart(context) {
   const [bucket, path] = parseBucketPath(context);
-  if (!bucket) return notFound();
+  if (!bucket) return missingBucket();
 
-  const request: Request = context.request;
-  const url = new URL(request.url);
-
-  const uploadId = new URLSearchParams(url.search).get("uploadId");
-  const multipartUpload = await bucket.resumeMultipartUpload(path, uploadId);
-
-  const partNumber = parseInt(
-    new URLSearchParams(url.search).get("partNumber")
-  );
-  const uploadedPart = await multipartUpload.uploadPart(
-    partNumber,
-    request.body
-  );
-
-  return new Response(null, {
-    headers: {
-      "Content-Type": "application/json",
-      etag: uploadedPart.etag,
-    },
-  });
+  const url = new URL(context.request.url);
+  const uploadId = url.searchParams.get("uploadId");
+  const partNumber = Number(url.searchParams.get("partNumber"));
+  if (!uploadId || !Number.isInteger(partNumber) || partNumber < 1) {
+    return jsonResponse({ error: "分片上传参数无效。" }, 400);
+  }
+  const uploadedPart = await bucket.resumeMultipartUpload(path, uploadId).uploadPart(partNumber, context.request.body);
+  return new Response(null, { headers: { "Content-Type": "application/json", etag: uploadedPart.etag } });
 }
 
 export async function onRequestPut(context) {
-  if(!get_auth_status(context)){
-    var header = new Headers()
-    header.set("WWW-Authenticate",'Basic realm="需要登录"')
-    return new Response("没有操作权限", {
-        status: 401,
-        headers: header,
-    });
-   }
-  const url = new URL(context.request.url);
-
-  if (new URLSearchParams(url.search).has("uploadId")) {
-    return onRequestPutMultipart(context);
+  if (!(await get_auth_status(context))) {
+    return jsonResponse({ error: "登录已失效或没有此目录的写入权限。" }, 401);
   }
+
+  const url = new URL(context.request.url);
+  if (url.searchParams.has("uploadId")) return onRequestPutMultipart(context);
 
   const [bucket, path] = parseBucketPath(context);
-  if (!bucket) return notFound();
+  if (!bucket) return missingBucket();
 
   const request: Request = context.request;
-
-  let content = request.body;
+  let content: ReadableStream | string | null = request.body;
   const customMetadata: Record<string, string> = {};
-
-  if (request.headers.has("x-amz-copy-source")) {
-    const sourceName = decodeURIComponent(
-      request.headers.get("x-amz-copy-source")
-    );
+  const copySource = request.headers.get("x-amz-copy-source");
+  if (copySource) {
+    const sourceName = decodeURIComponent(copySource);
+    if (!(await can_access_path(context, sourceName))) {
+      return jsonResponse({ error: "没有源文件的访问权限。" }, 403);
+    }
     const source = await bucket.get(sourceName);
+    if (!source) return jsonResponse({ error: "源文件不存在。" }, 404);
     content = source.body;
-    if (source.customMetadata.thumbnail)
-      customMetadata.thumbnail = source.customMetadata.thumbnail;
+    if (source.customMetadata?.thumbnail) customMetadata.thumbnail = source.customMetadata.thumbnail;
   }
 
-  if (request.headers.has("fd-thumbnail"))
-    customMetadata.thumbnail = request.headers.get("fd-thumbnail");
+  const thumbnail = request.headers.get("fd-thumbnail");
+  if (thumbnail) customMetadata.thumbnail = thumbnail;
 
-  const obj = await bucket.put(path, content, { customMetadata });
-  const { key, size, uploaded } = obj;
-  return new Response(JSON.stringify({ key, size, uploaded }), {
-    headers: { "Content-Type": "application/json" },
+  const object = await bucket.put(path, content, {
+    customMetadata,
+    httpMetadata: request.headers.get("content-type")
+      ? { contentType: request.headers.get("content-type") || undefined }
+      : undefined,
   });
+  return jsonResponse({ key: object.key, size: object.size, uploaded: object.uploaded });
 }
 
 export async function onRequestDelete(context) {
-  if(!get_auth_status(context)){
-    var header = new Headers()
-    header.set("WWW-Authenticate",'Basic realm="需要登录"')
-    return new Response("没有操作权限", {
-        status: 401,
-        headers: header,
-    });
-   }
+  if (!(await get_auth_status(context))) {
+    return jsonResponse({ error: "登录已失效或没有此目录的写入权限。" }, 401);
+  }
   const [bucket, path] = parseBucketPath(context);
-  if (!bucket) return notFound();
-
+  if (!bucket) return missingBucket();
   await bucket.delete(path);
   return new Response(null, { status: 204 });
 }

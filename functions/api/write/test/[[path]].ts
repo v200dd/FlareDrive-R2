@@ -1,16 +1,8 @@
-import {get_auth_status} from "@/utils/auth";
+import { get_auth_status } from "@/utils/auth";
+import { jsonResponse } from "@/utils/bucket";
 
 export async function onRequest(context) {
-   if(!get_auth_status(context)){
-    var header = new Headers()
-    header.set("WWW-Authenticate",'Basic realm="需要登录"')
-    return new Response("没有操作权限", {
-        status: 401,
-        headers: header,
-    });
-   }
-    
-    return new Response("access", {
-        status: 200,
-    });
+  return await get_auth_status(context)
+    ? new Response("access", { status: 200 })
+    : jsonResponse({ error: "登录已失效或没有此目录的写入权限。" }, 401);
 }
