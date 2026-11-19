@@ -11,7 +11,7 @@ const emit = defineEmits(["update:modelValue"]);
     <div
       v-if="modelValue"
       class="dialog-mask"
-      @click="emit('update:modelValue', false)"
+      @click.self="emit('update:modelValue', false)"
     >
       <div class="dialog-container">
         <slot></slot>

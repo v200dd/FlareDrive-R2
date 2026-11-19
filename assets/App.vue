@@ -61,7 +61,7 @@
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
             <input type="search" v-model="search" aria-label="搜索当前目录的文件" placeholder="搜索当前目录的文件…" />
           </label>
-          <button class="mobile-account icon-button" @click="logout" :aria-label="authenticatedUser ? '退出登录' : '登录账号'" :title="authenticatedUser ? '退出登录' : '登录账号'"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.7"/><path d="M5 20v-2a7 7 0 0 1 14 0v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+          <button class="header-account" @click="logout" :aria-label="authenticatedUser ? '退出登录' : '登录账号'" :title="authenticatedUser ? '退出登录' : '登录账号'"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.7"/><path d="M5 20v-2a7 7 0 0 1 14 0v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>{{ authenticatedUser ? '退出' : '登录' }}</span></button>
         </header>
 
         <main class="content">
@@ -169,8 +169,18 @@
       </transition>
       <Dialog v-if="focusedItem !== null" v-model="showContextMenu">
         <div class="contextmenu-heading"><span class="contextmenu-filename">{{ typeof focusedItem === 'string' ? focusedItem : focusedItem.key }}</span><button class="icon-button" @click.stop="showContextMenu = false" aria-label="关闭文件操作"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
-        <ul v-if="typeof focusedItem === 'string'" class="contextmenu-list"><li><button @click="copyLink(`/?p=${encodeURIComponent(focusedItem)}`)">复制链接</button></li><li><button @click="moveFile(focusedItem + '_$folder$')">移动</button></li><li><button class="danger-text" @click="removeFile(focusedItem + '_$folder$')">删除</button></li></ul>
+        <ul v-if="typeof focusedItem === 'string'" class="contextmenu-list"><li><button @click="copyLink(`/?p=${encodeURIComponent(focusedItem)}`)">复制链接</button></li><li v-if="canWritePath(focusedItem)"><button @click="openRenameFolder(focusedItem)" :disabled="folderRenamePending || uploadRunning">{{ folderRenamePending ? '重命名中…' : '重命名' }}</button></li><li><button @click="moveFile(focusedItem + '_$folder$')" :disabled="folderRenamePending">移动</button></li><li><button class="danger-text" @click="removeFile(focusedItem + '_$folder$')" :disabled="folderRenamePending">删除</button></li></ul>
         <ul v-else class="contextmenu-list"><li><button @click="renameFile(focusedItem.key)">重命名</button></li><li><a :href="`/raw/${focusedItem.key.split('/').map(encodeURIComponent).join('/')}`" target="_blank" rel="noopener" download>下载</a></li><li><button @click="clipboard = focusedItem.key">复制</button></li><li><button @click="moveFile(focusedItem.key)">移动</button></li><li><button @click="copyLink(`/raw/${focusedItem.key.split('/').map(encodeURIComponent).join('/')}`)">复制链接</button></li><li><button class="danger-text" @click="removeFile(focusedItem.key)">删除</button></li></ul>
+      </Dialog>
+      <Dialog v-model="showRenameFolder">
+        <form class="rename-folder-form" @submit.prevent="renameFolder(renameFolderTarget, renameFolderName)" @keydown.esc.prevent="showRenameFolder = false">
+          <h2>重命名文件夹</h2>
+          <label for="rename-folder-name">新的文件夹名称</label>
+          <input id="rename-folder-name" ref="renameFolderInput" v-model="renameFolderName" type="text" required :disabled="folderRenamePending" autocomplete="off" />
+          <p v-if="operationError" class="form-error" role="alert">{{ operationError }}</p>
+          <p v-else class="rename-folder-hint">保留目录内的文件和子文件夹，不覆盖同名目标。</p>
+          <div><button type="button" class="secondary-button" :disabled="folderRenamePending" @click="showRenameFolder = false">取消</button><button type="submit" class="primary-button" :disabled="folderRenamePending">{{ folderRenamePending ? '正在重命名…' : '确认重命名' }}</button></div>
+        </form>
       </Dialog>
     </div>
   </div>
@@ -213,6 +223,10 @@ export default {
     operationError: "",
     operationMessage: "",
     uploadRunning: false,
+    folderRenamePending: false,
+    showRenameFolder: false,
+    renameFolderTarget: "",
+    renameFolderName: "",
     loginError: "",
     loginPending: false,
     loadError: "",
@@ -576,6 +590,91 @@ export default {
         this.loadError = errorMessage(error, "部分项目删除失败，请重试。");
       } finally {
         this.loading = false;
+      }
+    },
+
+    openRenameFolder(folder) {
+      if (this.folderRenamePending || this.uploadRunning) return;
+      this.renameFolderTarget = folder;
+      this.renameFolderName = folder.split("/").filter(Boolean).pop() || "";
+      this.operationError = "";
+      this.operationMessage = "";
+      this.showContextMenu = false;
+      this.showRenameFolder = true;
+      this.$nextTick(() => { this.$refs.renameFolderInput?.focus(); this.$refs.renameFolderInput?.select(); });
+    },
+
+    async renameFolder(folder, requestedName) {
+      if (this.folderRenamePending || this.uploadRunning) return;
+      const source = folder.replace(/^\/+|\/+$/g, "") + "/";
+      if (source === "/") return;
+      const parts = source.slice(0, -1).split("/");
+      const oldName = parts.pop();
+      const parent = parts.length ? parts.join("/") + "/" : "";
+      if (typeof requestedName !== "string") return;
+      const newName = requestedName.trim();
+      if (!newName || /[/\\]/.test(newName) || [".", "..", "_$folder$"].includes(newName)) {
+        this.operationError = "请输入有效的文件夹名称，不能包含斜杠或使用保留名称。";
+        return;
+      }
+      if (newName === oldName) { this.showContextMenu = false; this.showRenameFolder = false; return; }
+      const target = `${parent}${newName}/`;
+      if (!this.canWritePath(source) || !this.canWritePath(target)) {
+        this.operationError = "没有源目录或新目录的写入权限，无法重命名。";
+        return;
+      }
+      this.folderRenamePending = true;
+      this.operationError = "";
+      this.operationMessage = "";
+      let allCopied = false;
+      let copyingStarted = false;
+      try {
+        // Check the parent on the server (including paginated prefixes), not a stale UI list.
+        let cursor = null;
+        let foundSource = false;
+        do {
+          const url = new URL(`/api/children/${encodePath(parent)}`, window.location.origin);
+          if (cursor) url.searchParams.set("cursor", cursor);
+          const response = await fetch(url, { credentials: "same-origin" });
+          const page = await response.json();
+          if (!response.ok) throw new Error(page.error || "无法读取父目录。");
+          foundSource ||= (page.folders || []).includes(source);
+          if ((page.folders || []).includes(target) || (page.value || []).some((item) => item.key === target.slice(0, -1))) {
+            throw new Error("同名文件或文件夹已存在，请使用其他名称。");
+          }
+          cursor = page.cursor || page.marker || null;
+        } while (cursor);
+        if (!foundSource) throw new Error("源文件夹已不存在，请刷新列表。");
+        const items = [...new Map((await this.getAllItems(source)).map((item) => [item.key, item])).values()];
+        if (items.some((item) => !item.key.startsWith(source)
+          || !this.canWritePath(item.key) || !this.canWritePath(target + item.key.slice(source.length)))) {
+          throw new Error("部分子项目没有写入权限，无法重命名。");
+        }
+        // R2 has no atomic directory rename. Copy every item first; never delete source on a copy failure.
+        copyingStarted = true;
+        let copied = 0;
+        for (const item of items) {
+          const destination = target + item.key.slice(source.length);
+          if (item.isFolderMarker) await axios.put(`/api/write/items/${encodePath(destination)}`, "");
+          else await this.copyPaste(item.key, destination);
+          this.uploadProgress = (++copied / (items.length + 1)) * 100;
+        }
+        await axios.put(`/api/write/items/${encodePath(target + "_$folder$")}`, "");
+        allCopied = true;
+        const sourceKeys = new Set([...items.map((item) => item.key), source + "_$folder$"]);
+        for (const key of sourceKeys) await axios.delete(`/api/write/items/${encodePath(key)}`);
+        this.showContextMenu = false;
+        this.showRenameFolder = false;
+        this.selectedItems = [];
+        await this.fetchFiles();
+        this.operationMessage = `文件夹已重命名：${oldName} → ${newName}`;
+      } catch (error) {
+        this.operationError = errorMessage(error, "文件夹重命名失败。")
+          + (allCopied ? " 新目录已复制完成，但旧目录清理未完成，请刷新检查。"
+            : copyingStarted ? " 未执行原目录删除；若留下新目录副本，请检查后再处理。" : "");
+      } finally {
+        this.folderRenamePending = false;
+        this.uploadProgress = null;
       }
     },
 

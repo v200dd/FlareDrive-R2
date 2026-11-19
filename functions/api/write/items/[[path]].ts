@@ -84,6 +84,8 @@ export async function onRequestPut(context) {
   const request: Request = context.request;
   let content: ReadableStream | string | null = request.body;
   const customMetadata: Record<string, string> = {};
+  let httpMetadata: R2HTTPMetadata | undefined = request.headers.get("content-type")
+    ? { contentType: request.headers.get("content-type") || undefined } : undefined;
   const copySource = request.headers.get("x-amz-copy-source");
   if (copySource) {
     const sourceName = decodeURIComponent(copySource);
@@ -93,7 +95,8 @@ export async function onRequestPut(context) {
     const source = await bucket.get(sourceName);
     if (!source) return jsonResponse({ error: "源文件不存在。" }, 404);
     content = source.body;
-    if (source.customMetadata?.thumbnail) customMetadata.thumbnail = source.customMetadata.thumbnail;
+    httpMetadata = source.httpMetadata;
+    Object.assign(customMetadata, source.customMetadata || {});
   }
 
   const thumbnail = request.headers.get("fd-thumbnail");
@@ -101,9 +104,7 @@ export async function onRequestPut(context) {
 
   const object = await bucket.put(path, content, {
     customMetadata,
-    httpMetadata: request.headers.get("content-type")
-      ? { contentType: request.headers.get("content-type") || undefined }
-      : undefined,
+    httpMetadata,
   });
   return jsonResponse({ key: object.key, size: object.size, uploaded: object.uploaded });
 }
