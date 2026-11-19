@@ -13,12 +13,19 @@ export async function generateThumbnail(file) {
 
   /** @type HTMLImageElement */
   if (file.type.startsWith("image/")) {
-    const image = await new Promise((resolve) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.src = URL.createObjectURL(file);
-    });
-    ctx.drawImage(image, 0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+    const url = URL.createObjectURL(file);
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const image = new Image();
+        const timer = setTimeout(() => reject(new Error("Image load timeout")), 5000);
+        image.onload = () => { clearTimeout(timer); resolve(image); };
+        image.onerror = () => { clearTimeout(timer); reject(new Error("Image format not supported")); };
+        image.src = url;
+      });
+      const scale = Math.max(THUMBNAIL_SIZE / image.naturalWidth, THUMBNAIL_SIZE / image.naturalHeight);
+      const width = image.naturalWidth * scale, height = image.naturalHeight * scale;
+      ctx.drawImage(image, (THUMBNAIL_SIZE - width) / 2, (THUMBNAIL_SIZE - height) / 2, width, height);
+    } finally { URL.revokeObjectURL(url); }
   } else if (file.type === "video/mp4") {
     // Generate thumbnail from video
     const video = await new Promise(async (resolve, reject) => {
@@ -64,7 +71,7 @@ export const SIZE_LIMIT = 100 * 1000 * 1000; // 100MB
 export async function multipartUpload(key, file, options) {
   const encodedKey = key.split("/").map(encodeURIComponent).join("/");
   const headers = options?.headers || {};
-  headers["content-type"] = file.type;
+  headers["Content-Type"] ||= file.type || "application/octet-stream";
 
   const uploadId = await axios
     .post(`/api/write/items/${encodedKey}?uploads`, "", { headers })

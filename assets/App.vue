@@ -71,12 +71,16 @@
               <h1>{{ cwd ? cwd.split('/').filter(Boolean).pop() : '全部文件' }}</h1>
               <p class="page-description">收藏每一份重要，随时找到所需。</p>
             </div>
-            <button class="primary-button upload-button" @click="showUploadPopup = true">
+            <button class="primary-button upload-button" @click="openUpload">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
               上传文件
             </button>
           </div>
 
+          <div class="access-note" :class="{ 'access-readonly': !canWriteDirectory }">{{ canWriteDirectory ? (authenticatedUser ? '此目录可上传文件' : '访客可在此目录上传文件，无需登录') : '此目录不可写入，请进入有权限的目录或登录账号' }}</div>
+          <div v-if="operationError || operationMessage" class="operation-notice" :class="{ 'operation-failed': operationError }" :role="operationError ? 'alert' : 'status'">
+            <span>{{ operationError || operationMessage }}</span><button @click="operationError = ''; operationMessage = ''" aria-label="关闭操作提示">×</button>
+          </div>
           <section class="file-panel" aria-label="文件列表" :aria-busy="loading">
             <div class="file-toolbar">
               <nav class="breadcrumbs" aria-label="目录导航">
@@ -90,6 +94,7 @@
                 </template>
               </nav>
               <div class="toolbar-actions">
+                <div class="view-switch" aria-label="文件显示方式"><button :aria-pressed="!galleryEnabled" @click="viewMode = 'list'">列表</button><button :aria-pressed="galleryEnabled" @click="viewMode = 'gallery'">缩略图</button></div>
                 <button class="text-button new-folder-button" @click="createFolder">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3V7Zm9 4v5m-2.5-2.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   <span>新建文件夹</span>
@@ -113,7 +118,7 @@
               <button class="secondary-button" @click="fetchFiles">重新加载</button>
             </div>
             <template v-else>
-              <div v-if="loading || filteredFolders.length || filteredFiles.length" class="list-header">
+              <div v-if="!galleryEnabled && (loading || filteredFolders.length || filteredFiles.length)" class="list-header">
                 <input type="checkbox" class="custom-checkbox" :checked="isAllSelected" @change="toggleSelectAll" aria-label="选择当前目录所有项目" :disabled="loading" />
                 <span>文件名称</span><span class="column-date">修改时间</span><span class="column-size">大小</span><span class="column-actions"></span>
               </div>
@@ -121,7 +126,7 @@
                 <span class="visually-hidden">正在加载文件</span>
                 <div v-for="n in 5" :key="n" class="skeleton-row"><span class="skeleton-icon"></span><span class="skeleton-name"></span><span class="skeleton-meta"></span></div>
               </div>
-              <ul v-else-if="filteredFolders.length || filteredFiles.length" class="file-list">
+              <ul v-else-if="filteredFolders.length || filteredFiles.length" class="file-list" :class="{ 'gallery-list': galleryEnabled }">
                 <li v-for="folder in filteredFolders" :key="folder" :class="{ selected: selectedItems.includes(folder + '_$folder$') }">
                   <div class="file-item" tabindex="0" role="button" @click="cwd = folder" @keydown.enter="cwd = folder" @keydown.space.prevent="cwd = folder" @contextmenu.prevent="focusedItem = folder; showContextMenu = true" :aria-label="'打开文件夹 ' + folder.split('/').filter(Boolean).pop()">
                     <div class="checkbox-wrapper" @click.stop @keydown.stop><input type="checkbox" :value="folder + '_$folder$'" v-model="selectedItems" class="custom-checkbox" :aria-label="'选择文件夹 ' + folder.split('/').filter(Boolean).pop()" /></div>
@@ -131,9 +136,9 @@
                   </div>
                 </li>
                 <li v-for="file in filteredFiles" :key="file.key" :class="{ selected: selectedItems.includes(file.key) }">
-                  <div class="file-item" tabindex="0" role="button" @click="preview(`/raw/${file.key.split('/').map(encodeURIComponent).join('/')}`)" @keydown.enter="preview(`/raw/${file.key.split('/').map(encodeURIComponent).join('/')}`)" @keydown.space.prevent="preview(`/raw/${file.key.split('/').map(encodeURIComponent).join('/')}`)" @contextmenu.prevent="focusedItem = file; showContextMenu = true" :aria-label="'打开文件 ' + file.key.split('/').pop()">
+                  <div class="file-item" tabindex="0" role="button" @click="previewFile(file)" @keydown.enter="previewFile(file)" @keydown.space.prevent="previewFile(file)" @contextmenu.prevent="focusedItem = file; showContextMenu = true" :aria-label="'打开文件 ' + file.key.split('/').pop()">
                     <div class="checkbox-wrapper" @click.stop @keydown.stop><input type="checkbox" :value="file.key" v-model="selectedItems" class="custom-checkbox" :aria-label="'选择文件 ' + file.key.split('/').pop()" /></div>
-                    <div class="file-name-cell"><MimeIcon :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png` : null" :size="25" /><span class="file-info-container"><span class="file-name">{{ file.key.split('/').pop() }}</span><span class="file-mobile-meta">{{ formatSize(file.size) }}<span class="meta-dot">·</span>{{ new Date(file.uploaded).toLocaleDateString() }}</span></span></div>
+                    <div class="file-name-cell"><MimeIcon :content-type="fileContentType(file)" :thumbnail="thumbnailUrl(file)" :fallback-thumbnail="rawUrl(file)" :size="galleryEnabled ? 144 : 48" /><span class="file-info-container"><span class="file-name">{{ file.key.split('/').pop() }}</span><span class="file-mobile-meta">{{ formatSize(file.size) }}<span class="meta-dot">·</span>{{ new Date(file.uploaded).toLocaleDateString() }}</span></span></div>
                     <span class="column-date file-secondary">{{ new Date(file.uploaded).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span><span class="column-size file-secondary">{{ formatSize(file.size) }}</span>
                     <button class="icon-button item-actions" @click.stop="focusedItem = file; showContextMenu = true" @keydown.stop aria-label="文件操作"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
                   </div>
@@ -144,9 +149,9 @@
                 <h2>{{ search ? '没有找到匹配的文件' : '这里还没有文件' }}</h2>
                 <p>{{ search ? '换个关键词试试，或清除搜索查看全部文件。' : '上传第一份文件，或新建文件夹开始整理。' }}</p>
                 <button v-if="search" class="secondary-button" @click="search = ''">清除搜索</button>
-                <button v-else class="secondary-button" @click="showUploadPopup = true">上传文件</button>
+                <button v-else class="secondary-button" @click="openUpload">上传文件</button>
               </div>
-              <div v-if="!loading && (filteredFolders.length || filteredFiles.length)" class="list-summary"><span>{{ search ? '找到' : '共' }} {{ filteredFolders.length + filteredFiles.length }} 项</span><span class="drop-hint">支持拖拽上传文件</span></div>
+              <div v-if="!loading && (filteredFolders.length || filteredFiles.length)" class="list-summary"><span>{{ search ? '找到' : '共' }} {{ filteredFolders.length + filteredFiles.length }} 项</span><span class="drop-hint">{{ canWriteDirectory ? '支持拖拽上传文件' : '此目录不可上传' }}</span></div>
             </template>
           </section>
 
@@ -154,6 +159,7 @@
         </main>
       </div>
 
+      <ImagePreview v-if="previewItem" :file="previewItem" :index="previewIndex" :total="previewImages.length" @close="previewItem = null" @previous="changePreview(-1)" @next="changePreview(1)" />
       <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
       <transition name="bulk">
         <div v-if="selectedItems.length > 0" class="bulk-action-bar">
@@ -182,6 +188,8 @@ import Dialog from "./Dialog.vue";
 import Menu from "./Menu.vue";
 import MimeIcon from "./MimeIcon.vue";
 import UploadPopup from "./UploadPopup.vue";
+import ImagePreview from "./ImagePreview.vue";
+import { fileContentType as resolveFileType } from "../utils/file-type.ts";
 
 function encodePath(path) {
   return path.split("/").map((part) => encodeURIComponent(part)).join("/");
@@ -199,6 +207,12 @@ export default {
     usernameInput: "",
     passwordInput: "",
     authenticatedUser: "",
+    allowList: [],
+    viewMode: "auto",
+    previewItem: null,
+    operationError: "",
+    operationMessage: "",
+    uploadRunning: false,
     loginError: "",
     loginPending: false,
     loadError: "",
@@ -220,6 +234,10 @@ export default {
   }),
 
   computed: {
+    canWriteDirectory() { return this.canWritePath(this.cwd.replace(/^\/+|\/+$/g, "") + (this.cwd.replace(/^\/+|\/+$/g, "") ? "/" : "")); },
+    previewImages() { return this.filteredFiles.filter((file) => this.fileContentType(file).startsWith("image/")); },
+    previewIndex() { return this.previewImages.findIndex((file) => file.key === this.previewItem?.key); },
+    galleryEnabled() { return this.viewMode === "gallery" || (this.viewMode === "auto" && this.previewImages.length > 0); },
     filteredFiles() {
       let files = this.files;
       if (this.search) {
@@ -247,6 +265,26 @@ export default {
   },
 
   methods: {
+    rawUrl(file) { return `/raw/${encodePath(file.key)}`; },
+    fileContentType(file) { return resolveFileType(file.key, file.httpMetadata?.contentType || ""); },
+    thumbnailUrl(file) {
+      if (!this.fileContentType(file).startsWith("image/")) return null;
+      const digest = file.customMetadata?.thumbnail;
+      return /^[a-f0-9]{40}$/i.test(digest || "") ? `/raw/_$flaredrive$/thumbnails/${digest}.png` : this.rawUrl(file);
+    },
+    previewFile(file) {
+      if (this.fileContentType(file).startsWith("image/")) this.previewItem = file;
+      else this.preview(this.rawUrl(file));
+    },
+    changePreview(offset) {
+      const file = this.previewImages[this.previewIndex + offset];
+      if (file) this.previewItem = file;
+    },
+    canWritePath(path) { return this.isAuthenticated && (this.allowList.includes("*") || this.allowList.some((prefix) => path.startsWith(prefix))); },
+    openUpload() {
+      if (!this.canWriteDirectory) { this.operationError = "没有此目录的写入权限，请进入有权限的目录或登录后上传。"; return; }
+      this.showUploadPopup = true;
+    },
     async restoreSession() {
       this.sessionLoading = true;
       try {
@@ -256,6 +294,7 @@ export default {
         this.isAuthenticated = session.authenticated === true;
         this.requireLogin = false;
         this.authenticatedUser = session.username || "";
+        this.allowList = session.allowList || [];
         this.loadError = "";
         if (this.isAuthenticated) await this.fetchFiles();
       } catch (error) {
@@ -284,6 +323,7 @@ export default {
         this.isAuthenticated = session.authenticated === true;
         this.requireLogin = false;
         this.authenticatedUser = session.username || "";
+        this.allowList = session.allowList || [];
         this.passwordInput = "";
         this.loadError = "";
         if (this.isAuthenticated) await this.fetchFiles();
@@ -310,6 +350,7 @@ export default {
         this.isAuthenticated = session.authenticated === true;
         this.requireLogin = true;
         this.authenticatedUser = session.username || "";
+        this.allowList = session.allowList || [];
         this.files = [];
         this.folders = [];
         this.selectedItems = [];
@@ -337,6 +378,7 @@ export default {
     },
 
     async createFolder() {
+      if (!this.canWriteDirectory) { this.openUpload(); return; }
       try {
         const folderName = window.prompt("请输入文件夹名称");
         if (!folderName) return;
@@ -460,41 +502,43 @@ export default {
     },
 
     async processUploadQueue() {
-      if (!this.uploadQueue.length) {
-        await this.fetchFiles();
-        this.uploadProgress = null;
-        return;
-      }
-
-      const { basedir, file } = this.uploadQueue.shift();
-      let thumbnailDigest = null;
-      if (file.type.startsWith("image/") || file.type === "video/mp4") {
-        try {
-          const thumbnailBlob = await generateThumbnail(file);
-          const digestHex = await blobDigest(thumbnailBlob);
-          await axios.put(`/api/write/items/${encodePath(`_$flaredrive$/thumbnails/${digestHex}.png`)}`, thumbnailBlob);
-          thumbnailDigest = digestHex;
-        } catch (error) {
-          console.warn("Thumbnail creation failed", error);
-        }
-      }
-
+      if (this.uploadRunning) return;
+      this.uploadRunning = true;
+      this.uploadProgress = 0;
+      let uploaded = 0;
+      const failures = [];
       try {
-        const key = `${basedir}${file.name}`;
-        const headers = thumbnailDigest ? { "fd-thumbnail": thumbnailDigest } : {};
-        const onUploadProgress = (progressEvent) => {
-          if (progressEvent.total) this.uploadProgress = (progressEvent.loaded * 100) / progressEvent.total;
-        };
-        if (file.size >= SIZE_LIMIT) {
-          await multipartUpload(key, file, { headers, onUploadProgress });
-        } else {
-          await axios.put(`/api/write/items/${encodePath(key)}`, file, { headers, onUploadProgress });
+        while (this.uploadQueue.length) {
+          const { basedir, file } = this.uploadQueue.shift();
+          try {
+            const key = `${basedir}${file.name}`;
+            let thumbnailDigest = null;
+            // Restricted guests cannot write to the shared thumbnail namespace; use the original instead.
+            if (this.canWritePath("_$flaredrive$/thumbnails/") && (file.type.startsWith("image/") || file.type === "video/mp4")) {
+              try {
+                const thumbnailBlob = await generateThumbnail(file);
+                const digest = await blobDigest(thumbnailBlob);
+                await axios.put(`/api/write/items/${encodePath(`_$flaredrive$/thumbnails/${digest}.png`)}`, thumbnailBlob, { headers: { "Content-Type": "image/png" } });
+                thumbnailDigest = digest;
+              } catch (error) { console.warn("Thumbnail creation failed; using original image", error); }
+            }
+            const headers = { "Content-Type": resolveFileType(file.name, file.type), ...(thumbnailDigest ? { "fd-thumbnail": thumbnailDigest } : {}) };
+            const onUploadProgress = (event) => { if (event.total) this.uploadProgress = event.loaded * 100 / event.total; };
+            if (file.size >= SIZE_LIMIT) await multipartUpload(key, file, { headers, onUploadProgress });
+            else await axios.put(`/api/write/items/${encodePath(key)}`, file, { headers, onUploadProgress });
+            uploaded++;
+          } catch (error) {
+            failures.push(`“${file.name}”：${errorMessage(error, "上传失败，请检查网络后重试。")}`);
+            this.operationError = failures.join("；");
+          }
         }
-        this.loadError = "";
-      } catch (error) {
-        this.loadError = errorMessage(error, `上传“${file.name}”失败，请检查写入权限后重试。`);
+        await this.fetchFiles();
+        this.operationError = failures.length ? `已上传 ${uploaded} 个文件，${failures.length} 个失败。${failures.join("；")}` : "";
+        this.operationMessage = failures.length ? "" : `上传完成，成功上传 ${uploaded} 个文件。`;
+      } finally {
+        this.uploadRunning = false;
+        this.uploadProgress = null;
       }
-      setTimeout(() => this.processUploadQueue(), 0);
     },
 
     async removeFile(key) {
@@ -632,14 +676,18 @@ export default {
     },
 
     uploadFiles(files) {
+      if (!files.length) return;
+      if (!this.canWriteDirectory) { this.openUpload(); return; }
+      if (!this.uploadRunning) { this.operationError = ""; this.operationMessage = ""; }
       const basedir = this.cwd && !this.cwd.endsWith("/") ? `${this.cwd}/` : this.cwd;
       this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir, file })));
-      if (this.uploadQueue.length === files.length) setTimeout(() => this.processUploadQueue(), 0);
+      if (!this.uploadRunning) this.processUploadQueue().catch((error) => { this.operationError = errorMessage(error, "上传失败，请重试。"); });
     },
   },
 
   watch: {
     cwd() {
+      this.previewItem = null;
       this.selectedItems = [];
       this.search = "";
       if (this.isAuthenticated) this.fetchFiles();
@@ -666,6 +714,7 @@ export default {
     Menu,
     MimeIcon,
     UploadPopup,
+    ImagePreview,
   },
 };
 </script>

@@ -1,5 +1,12 @@
-import { can_access_path, get_auth_status } from "@/utils/auth";
+import { can_access_path, get_auth_status, get_identity } from "@/utils/auth";
 import { jsonResponse, missingBucket, parseBucketPath } from "@/utils/bucket";
+
+async function writeDenied(context) {
+  const identity = await get_identity(context);
+  return jsonResponse({ error: !identity ? "请登录后上传，或进入开放的访客目录。"
+    : identity.username ? "没有此目录的写入权限。"
+    : "访客没有此目录的写入权限，请进入开放目录或登录后上传。" }, identity ? 403 : 401);
+}
 
 export async function onRequestPostCreateMultipart(context) {
   const [bucket, path] = parseBucketPath(context);
@@ -40,7 +47,7 @@ export async function onRequestPostCompleteMultipart(context) {
 
 export async function onRequestPost(context) {
   if (!(await get_auth_status(context))) {
-    return jsonResponse({ error: "登录已失效或没有此目录的写入权限。" }, 401);
+    return writeDenied(context);
   }
 
   const url = new URL(context.request.url);
@@ -65,7 +72,7 @@ export async function onRequestPutMultipart(context) {
 
 export async function onRequestPut(context) {
   if (!(await get_auth_status(context))) {
-    return jsonResponse({ error: "登录已失效或没有此目录的写入权限。" }, 401);
+    return writeDenied(context);
   }
 
   const url = new URL(context.request.url);
@@ -103,7 +110,7 @@ export async function onRequestPut(context) {
 
 export async function onRequestDelete(context) {
   if (!(await get_auth_status(context))) {
-    return jsonResponse({ error: "登录已失效或没有此目录的写入权限。" }, 401);
+    return writeDenied(context);
   }
   const [bucket, path] = parseBucketPath(context);
   if (!bucket) return missingBucket();

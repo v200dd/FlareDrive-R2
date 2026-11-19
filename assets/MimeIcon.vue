@@ -1,5 +1,6 @@
 <script setup>
-defineProps({
+import { ref, watch } from "vue";
+const props = defineProps({
   contentType: {
     type: String,
     default: "",
@@ -8,22 +9,32 @@ defineProps({
     type: String,
     default: "",
   },
+  fallbackThumbnail: String,
   size: {
     type: Number,
     default: 36,
   },
 });
+const failed = ref(false);
+const fallback = ref(false);
+watch(() => [props.thumbnail, props.fallbackThumbnail], () => { failed.value = false; fallback.value = false; });
+function imageError() {
+  if (!fallback.value && props.fallbackThumbnail && props.fallbackThumbnail !== props.thumbnail) fallback.value = true;
+  else failed.value = true;
+}
 </script>
 
 <template>
   <div class="file-icon">
     <img
-      v-if="thumbnail && contentType.startsWith('image/') && contentType !== 'image/svg+xml'"
-      :src="thumbnail"
+      v-if="thumbnail && contentType.startsWith('image/') && !failed"
+      :src="fallback ? fallbackThumbnail : thumbnail"
       :width="size"
       :height="size"
-      alt="Image"
+      alt=""
       loading="lazy"
+      decoding="async"
+      @error="imageError"
     />
     <svg
       v-else

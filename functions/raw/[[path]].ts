@@ -1,5 +1,14 @@
 import { can_access_path } from "@/utils/auth";
 import { jsonResponse, missingBucket, parseBucketPath } from "@/utils/bucket";
+import { fileContentType } from "@/utils/file-type";
+
+function mediaHeaders(headers: Headers, path: string, request: Request) {
+  headers.set("Content-Type", fileContentType(path, headers.get("Content-Type") || ""));
+  headers.set("X-Content-Type-Options", "nosniff");
+  if (new URL(request.url).searchParams.get("download") === "1") {
+    headers.set("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(path.split("/").pop() || "download")}`);
+  }
+}
 
 export async function onRequestGet(context) {
   const [bucket, path] = parseBucketPath(context);
@@ -15,6 +24,7 @@ export async function onRequestGet(context) {
       if (!metadata) return jsonResponse({ error: "文件不存在。" }, 404);
       const headers = new Headers();
       metadata.writeHttpMetadata(headers);
+      mediaHeaders(headers, path, request);
       headers.set("ETag", metadata.httpEtag);
       headers.set("Last-Modified", metadata.uploaded.toUTCString());
       headers.set("Accept-Ranges", "bytes");
@@ -67,6 +77,7 @@ export async function onRequestGet(context) {
 
     const responseHeaders = new Headers();
     object.writeHttpMetadata(responseHeaders);
+    mediaHeaders(responseHeaders, path, request);
     responseHeaders.set("ETag", object.httpEtag);
     responseHeaders.set("Last-Modified", object.uploaded.toUTCString());
     responseHeaders.set("Accept-Ranges", "bytes");
